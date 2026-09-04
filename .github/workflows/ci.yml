@@ -28,6 +28,21 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The guest tests run real zkVM sessions, so the prover must actually be present. Without it
+      # every negative test still passes — "prover not found" is an Err just like a guest rejection —
+      # which is precisely the hollow green this project exists to avoid.
+      - name: Install risc0 toolchain (r0vm)
+        run: |
+          curl -L https://risczero.com/install | bash
+          echo "$HOME/.risc0/bin" >> "$GITHUB_PATH"
+          "$HOME/.risc0/bin/rzup" install r0vm 3.0.6
+          "$HOME/.risc0/bin/rzup" install cargo-risczero 3.0.6
+
+      - name: Verify the prover is present
+        run: |
+          r0vm --version
+          test -s artifacts/membership.bin
+
       - name: cargo fmt --check
         run: cargo fmt --all -- --check
 

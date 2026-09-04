@@ -150,20 +150,44 @@ fn contains(haystack: &[u8], needle: &[u8]) -> bool {
 mod negatives {
     use super::*;
 
+    /// Runs the guest and returns the cycle count, or the guest's **rejection** message.
+    ///
+    /// Distinguishing a rejection from an infrastructure failure matters: without this, every
+    /// negative test passes whenever `r0vm` is missing, because "prover not found" is also an
+    /// `Err`. CI hit exactly that — the binary was committed but `r0vm` was not installed, and the
+    /// negatives reported green against a prover that never ran. A test that passes when the thing
+    /// under test is absent is worse than no test (gate H2 in spirit).
     fn run(
         claim: &ApprovalClaim,
         witness: &ApprovalWitness,
         pre_states: &[AccountWithMetadata],
     ) -> Result<u64, String> {
-        execute_approval(
+        let result = execute_approval(
             &program_binary(),
             SELF_PROGRAM_ID,
             None,
             pre_states,
             claim,
             witness,
-        )
-        .map_err(|e| e.to_string())
+        );
+        if let Err(e) = &result {
+            let msg = e.to_string();
+            assert!(
+                !looks_like_missing_prover(&msg),
+                "the prover did not run at all ({msg}). This is an environment failure, not a \
+                 guest rejection — install r0vm (`rzup install`) rather than reading this as a pass."
+            );
+        }
+        result.map_err(|e| e.to_string())
+    }
+
+    /// Heuristic for "the executor never started", as opposed to "the guest panicked".
+    fn looks_like_missing_prover(msg: &str) -> bool {
+        let m = msg.to_ascii_lowercase();
+        m.contains("no such file or directory")
+            || m.contains("not found")
+            || m.contains("permission denied")
+            || m.contains("failed to spawn")
     }
 
     /// Also reports the cycle count, which is what sets proving time (P-F5) and, later, CU cost.
