@@ -4,8 +4,8 @@
 - Prize source: ../lambda-prize/prizes/LP-0002.md
 - Sibling layout: intentional — easy human eval side-by-side
 - Solution repo absolute path: /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig
-- Current phase: **B (Guests / membership proof)** — next
-- Last green SC: SC-A.1–SC-A.8 (Phase A)
+- Current phase: **C (SPEL multisig + membership program)** — next
+- Last green SC: SC-B.1–SC-B.7 (Phase B) — real proof 53.26s, DEV_MODE=0
 - Blockers: none. (#105 eligibility: operator decided 2026-09-04 to proceed through Phase I — `docs/phase-N1-status.md` §3.)
 
 - Remote: https://github.com/pramadanif/lp0002 (public)
@@ -34,15 +34,22 @@
 | Narrated video URL + transcript | Phase H (W5/H11) | not yet requested |
 | Basecamp click-QA (if automation fails) | Phase F | not yet needed |
 
+## Carried forward
+
+| Item | Needed by | Note |
+|------|-----------|------|
+| Reproducible guest build (`build-guests.sh --docker`) | Phase G | `artifacts/IMAGE_IDS.md` currently records a local, non-reproducible build and says so |
+| Second-proof slowdown undiagnosed | Phase H (BUGS_FILED) | `docs/tried-failed.md`; does not affect the recorded 53.26 s |
+
 ## Phase ledger
 
 | Phase | Status | Status doc | Commit |
 |-------|--------|-----------|--------|
 | −1 | ✅ complete | `docs/phase-N1-status.md` | (this commit) |
 | 0  | ✅ complete | `docs/phase-0-status.md` | `5ef6b93` / `b14f49e` |
-| A  | ✅ complete | `docs/phase-A-status.md` | (this commit) |
-| B  | next | — | — |
-| C  | not started | — | — |
+| A  | ✅ complete | `docs/phase-A-status.md` | `ec9534a` |
+| B  | ✅ complete | `docs/phase-B-status.md` | `f8b6e5f` |
+| C  | next | — | — |
 | D  | not started | — | — |
 | E  | not started | — | — |
 | F  | not started | — | — |

@@ -8,9 +8,10 @@ Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0*
 
 Repository: <https://github.com/pramadanif/lp0002>
 
-> **Status: early. Phase A of 10 complete.** Skeleton, CI, submission preflight and the full design
-> are in place; the circuits, the on-chain program and the demo are not written yet. Nothing here
-> claims to work on testnet. See [Build status](#build-status) for exactly what exists.
+> **Status: Phase B of 10 complete.** The membership guest proves and verifies for real
+> (`RISC0_DEV_MODE=0`, 53.26 s on a laptop). The on-chain SPEL program, the demo and the testnet
+> deployment are not written yet, and nothing here has touched testnet. See
+> [Build status](#build-status) for exactly what exists.
 
 ---
 
@@ -68,7 +69,7 @@ Each phase has a status document recording the exact commands run, their exit co
 | −1 | Competitor + environment preflight, version pins | ✅ [`docs/phase-N1-status.md`](docs/phase-N1-status.md) |
 | 0 | Repo skeleton, dual licence, CI, preflight harness | ✅ [`docs/phase-0-status.md`](docs/phase-0-status.md) |
 | A | ADR, account model, security model, error codes | ✅ [`docs/phase-A-status.md`](docs/phase-A-status.md) |
-| B | Membership + nullifier guest, one real `RISC0_DEV_MODE=0` proof | ☐ |
+| B | Membership + nullifier guest, one real `RISC0_DEV_MODE=0` proof | ✅ [`docs/phase-B-status.md`](docs/phase-B-status.md) |
 | C | SPEL program: create / propose / approve / execute, IDL | ☐ |
 | D | SDK, CLI, restart-resume, peer privacy | ☐ |
 | E | `demo.sh` against a standalone sequencer, CI e2e | ☐ |
