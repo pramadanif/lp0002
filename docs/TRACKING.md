@@ -4,9 +4,9 @@
 - Prize source: ../lambda-prize/prizes/LP-0002.md
 - Sibling layout: intentional — easy human eval side-by-side
 - Solution repo absolute path: /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig
-- Current phase: **0 (Bootstrap)** — next
+- Current phase: **0 (Bootstrap)** — 3/5 SC green, blocked on publishing (SC0.1, SC0.4)
 - Last green SC: SC-N1.1, SC-N1.2, SC-N1.3 (Phase −1)
-- Blockers: **Phase I blocked on eligibility (#105)** — see `docs/phase-N1-status.md` §3. Build hard-stops after Phase H.
+- Blockers: **(1) repo publication denied by permission classifier — blocks SC0.1/SC0.4.** (2) **Phase I blocked on eligibility (#105)** — see `docs/phase-N1-status.md` §3. Build hard-stops after Phase H.
 
 ## Pins (settled in Phase −1, evidence-backed)
 
@@ -28,6 +28,7 @@
 
 | Gate | Needed by | State |
 |------|-----------|-------|
+| Approve `gh repo create --public` (or create repo + remote manually) | **Phase 0 (now)** | ⛔ blocked — classifier denied the command |
 | Eligibility answer on #105 | **Phase I** | ⛔ unresolved — hard stop after Phase H |
 | Funded LEZ testnet keys (M members + treasury) | Phase G | not yet requested |
 | Narrated video URL + transcript | Phase H (W5/H11) | not yet requested |
@@ -38,7 +39,7 @@
 | Phase | Status | Status doc | Commit |
 |-------|--------|-----------|--------|
 | −1 | ✅ complete | `docs/phase-N1-status.md` | (this commit) |
-| 0  | next | — | — |
+| 0  | ◐ 3/5 SC green — blocked on publish | `docs/phase-0-status.md` | `5ef6b93` |
 | A  | not started | — | — |
 | B  | not started | — | — |
 | C  | not started | — | — |
