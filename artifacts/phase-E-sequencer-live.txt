@@ -1,0 +1,17 @@
+# Phase E evidence: the standalone LEZ sequencer runs
+captured_utc: 2026-09-04T13:17:01Z
+commit: 2e51eee
+
+## Build
+cargo build --release --features standalone -p sequencer_service  (LEZ v0.2.4)
+errors: 0
+binary: .refs/lez/target/release/sequencer_service (31482864 bytes)
+
+## Startup (from .e2e/run/sequencer.log)
+
+## Driven by scripts/e2e-local-sequencer.sh
+    sequencer is live — getLastBlockId = 2
+
+## Result
+The script then FAILS at the unimplemented lifecycle step (exit 1) rather than
+reporting a pass it has not earned, and stops the sequencer on the way out.

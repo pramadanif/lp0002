@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Plan contract:** `docs/plan/planlp0002.md` §5 Phase E
-**Result:** **IN PROGRESS — 3 of 8 SC green. Phase E is NOT complete.**
+**Result:** **IN PROGRESS — 4 of 8 SC green. Phase E is NOT complete.**
 
 Abort check at phase start: #125 `reviewDecision` empty; merged LP-0002 PRs → 0. Not aborting.
 
@@ -15,7 +15,7 @@ ones prior submissions failed. So the status below is deliberately blunt about w
 | SC | Requirement | State | Evidence |
 |----|-------------|-------|----------|
 | **SC-E.1** | Fresh clone `./demo.sh` → 0 with a standalone sequencer (**H1/W13**, **P-S5**) | ⛔ **not met** | `demo.sh` and `scripts/e2e-local-sequencer.sh` are written and get as far as building the sequencer. The lifecycle step is unimplemented and the script **fails there** rather than reporting a success it has not earned |
-| **SC-E.2** | Log shows `RISC0_DEV_MODE=0` + real prove + sequencer RPC | ◐ partial | `RISC0_DEV_MODE=0` is set at the `demo.sh` entrypoint and echoed; the RPC readiness probe (`checkHealth`) is implemented. The real prove inside the e2e run is not reached yet |
+| **SC-E.2** | Log shows `RISC0_DEV_MODE=0` + real prove + sequencer RPC | ◐ partial | **Sequencer RPC demonstrated**: the standalone node builds (0 errors), starts, logs `Starting Sequencer Service RPC server on 0.0.0.0:3040`, and the script reports `sequencer is live — getLastBlockId = 2`. Evidence: `artifacts/phase-E-sequencer-live.txt`. `RISC0_DEV_MODE=0` is set at the entrypoint and echoed. The **real prove inside the e2e run** is not reached yet |
 | **SC-E.3** | `check-dev-mode-clobber.sh` → 0 (**H3**) | ✅ green | Exit 0 over 5 submission-path scripts incl. `demo.sh`. Verified in both directions: injecting `export RISC0_DEV_MODE=1` makes it exit 1 |
 | **SC-E.4** | CI green on `main` including a **push-gated** `e2e-sequencer` job (**H4/W14**) | ⛔ **not met** | Deliberately not wired — see below |
 | **SC-E.5** | No skip / `continue-on-error` on demo/e2e (**H2**) | ✅ green | Neither string appears in `ci.yml`, `demo.sh` or `scripts/`. Every prerequisite in the e2e script is a hard `die`. Preflight PF-03 passes |
@@ -44,11 +44,18 @@ rather than forgotten.
   program can be cross-compiled to `riscv32im-risc0-zkvm-elf` and deployed.
 - `demo-fast.sh` — the development tour, labelled as not-the-prize-demo in three places.
 
-**Blocked on a long build.** `cargo build --release --features standalone -p sequencer_service`
-pulls a full Logos blockchain node plus a C++ groth16 stack (circom_runtime, ffiasm, rapidsnark,
-pistache, googletest, rapidjson, jellyfish). The dependency fetch alone had moved ~600 MB into
-`~/.cargo/git` and was still going; the compile has not started. This is a one-off cost per machine,
-but it is measured in hours on an 8-core laptop, not minutes.
+**The sequencer now builds and runs.** `cargo build --release --features standalone -p sequencer_service`
+completed with **0 errors** (31 MB binary) after pulling a full Logos blockchain node plus a C++
+groth16 stack (circom_runtime, ffiasm, rapidsnark, pistache, googletest, rapidjson, jellyfish) —
+~600 MB of git dependencies and roughly an hour of compilation on an 8-core laptop, of which the
+final Rust link was 15m51s. A one-off cost per machine, but a substantial one, and CI will pay it
+too unless the build is cached.
+
+`scripts/e2e-local-sequencer.sh` now drives it end to end: builds both guests, starts the node, polls
+`checkHealth` until it answers, reports `getLastBlockId`, then **fails at the unimplemented lifecycle
+step** and stops the sequencer on the way out. One real fix came out of this: the sequencer wants the
+config *file*, not its directory — LEZ's README shows both forms, and passing the directory fails
+with `Is a directory (os error 21)`.
 
 **Not started, and each is substantial:**
 1. Deploying both programs — needs LEZ's `wallet DeployProgram`, itself another large build.

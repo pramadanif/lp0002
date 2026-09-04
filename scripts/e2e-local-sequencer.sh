@@ -106,8 +106,11 @@ log "building the guest programs"
 log "starting the standalone sequencer"
 SEQ_HOME="$RUN_DIR/sequencer"
 mkdir -p "$SEQ_HOME"
-( cd "$SEQ_HOME" && RUST_LOG=info "$SEQ_BIN" \
-    "$LEZ_DIR/lez/sequencer/service/configs/debug" > "$SEQ_LOG" 2>&1 ) &
+# The config PATH, not its directory: LEZ's README shows both forms, and passing the directory
+# fails with "Is a directory (os error 21)".
+SEQ_CONFIG="$LEZ_DIR/lez/sequencer/service/configs/debug/sequencer_config.json"
+[[ -f "$SEQ_CONFIG" ]] || die "sequencer config not found at $SEQ_CONFIG"
+( cd "$SEQ_HOME" && RUST_LOG=info "$SEQ_BIN" "$SEQ_CONFIG" > "$SEQ_LOG" 2>&1 ) &
 SEQ_PID=$!
 info "sequencer pid $SEQ_PID, logs -> $SEQ_LOG"
 
