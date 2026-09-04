@@ -23,8 +23,9 @@ use serde_json::Value;
 
 const MULTISIG_ID: Digest32 = [0xA1; 32];
 const PROPOSAL_ID: Digest32 = [0xB2; 32];
-/// Two stand-in co-members. Only their npks matter; nobody needs their secrets to approve.
-const CO_MEMBERS: [Digest32; 2] = [[0x22; 32], [0x33; 32]];
+/// One stand-in co-member so N=3 with two real wallet accounts. Only its npk matters; nobody needs
+/// its secret, and it never approves.
+const CO_MEMBER: Digest32 = [0x33; 32];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
@@ -38,47 +39,66 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .into();
 
     let doc: Value = serde_json::from_slice(&std::fs::read(&storage)?)?;
-    let account = dig(&doc, &["key_chain", "accounts"])?
+    let privates: Vec<&Value> = dig(&doc, &["key_chain", "accounts"])?
         .as_array()
         .ok_or("`key_chain.accounts` is not an array")?
         .iter()
-        .find_map(|a| a.get("Private"))
-        .ok_or("the wallet has no private (shielded) account")?;
-
-    let account_id: AccountId = dig(account, &["account_id"])?
-        .as_str()
-        .ok_or("account_id is not a string")?
-        .parse()?;
-    let key = dig(account, &["data", "value"])?
-        .as_array()
-        .and_then(|v| v.first())
-        .ok_or("the account has no key material")?;
-    let nsk = bytes32(dig(key, &["private_key_holder", "nullifier_secret_key"])?)?;
-    let vpk_bytes = byte_vec(dig(key, &["viewing_public_key"])?)?;
-    let wallet_npk = bytes32(dig(key, &["nullifier_public_key"])?)?;
-
-    // --- cross-check 1: our npk derivation reproduces the wallet's own npk ---
-    let derived_npk = npk_of(&nsk).to_byte_array();
-    if derived_npk != wallet_npk {
-        return Err("our npk derivation disagrees with the wallet's".into());
+        .filter_map(|a| a.get("Private"))
+        .collect();
+    if privates.len() < 2 {
+        return Err(format!(
+            "need at least 2 shielded accounts for a 2-of-3 demo, wallet has {}. \
+             Create one with: wallet account new private",
+            privates.len()
+        )
+        .into());
     }
 
-    // --- cross-check 2: our account-id derivation reproduces the wallet's account ---
-    let vpk = decode_vpk(&vpk_bytes)?;
-    let identifier = (0_u128..4)
-        .find(|i| AccountId::for_regular_private_account(&npk_of(&nsk), &vpk, *i) == account_id)
-        .ok_or("could not reproduce the wallet's account id for any identifier in 0..4")?;
+    // Read each real member's key material and cross-check our derivation against the wallet's.
+    struct Member {
+        nsk: Digest32,
+        vpk: ViewingPublicKey,
+        identifier: u128,
+        account_id: AccountId,
+        npk: Digest32,
+    }
+    let mut members = Vec::new();
+    for account in privates.iter().take(2) {
+        let account_id: AccountId = dig(account, &["account_id"])?
+            .as_str()
+            .ok_or("account_id is not a string")?
+            .parse()?;
+        let key = dig(account, &["data", "value"])?
+            .as_array()
+            .and_then(|v| v.first())
+            .ok_or("the account has no key material")?;
+        let nsk = bytes32(dig(key, &["private_key_holder", "nullifier_secret_key"])?)?;
+        let vpk = decode_vpk(&byte_vec(dig(key, &["viewing_public_key"])?)?)?;
+        let wallet_npk = bytes32(dig(key, &["nullifier_public_key"])?)?;
 
+        let npk = npk_of(&nsk).to_byte_array();
+        if npk != wallet_npk {
+            return Err("our npk derivation disagrees with the wallet's".into());
+        }
+        let identifier = (0_u128..8)
+            .find(|i| AccountId::for_regular_private_account(&npk_of(&nsk), &vpk, *i) == account_id)
+            .ok_or("could not reproduce the wallet's account id for any identifier in 0..8")?;
+
+        members.push(Member {
+            nsk,
+            vpk,
+            identifier,
+            account_id,
+            npk,
+        });
+    }
     println!("CROSSCHECK_NPK=ok");
     println!("CROSSCHECK_ACCOUNT_ID=ok");
-    println!("IDENTIFIER={identifier}");
-    println!("APPROVER_ACCOUNT_ID={account_id}");
 
-    // --- the member set: the wallet's real account plus two stand-ins ---
-    let mut npks = vec![derived_npk];
-    npks.extend(CO_MEMBERS.iter().map(|n| npk_of(n).to_byte_array()));
+    // Member set: both real wallet accounts plus one stand-in, giving 2-of-3.
+    let mut npks: Vec<Digest32> = members.iter().map(|m| m.npk).collect();
+    npks.push(npk_of(&CO_MEMBER).to_byte_array());
     let tree = MemberTree::new(&npks).ok_or("member tree")?;
-    let path = tree.path(0).ok_or("wallet member has no path")?;
 
     let verifier = read_membership_image_id()?;
     let config_hash = pmsig_core::config_hash(&tree.root(), 2, 3, &MULTISIG_ID, &verifier);
@@ -99,34 +119,38 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Vec<_>>()
             .join(",")
     );
-    println!(
-        "NULLIFIER={}",
-        hex::encode(pmsig_core::approval_nullifier(
-            &nsk,
-            &MULTISIG_ID,
-            &PROPOSAL_ID
-        ))
-    );
 
-    // --- the witness: secret, so it goes to a file the caller reads, not to stdout ---
-    let witness = ApprovalWitness {
-        nsk,
-        vpk,
-        identifier,
-        member_index: 0,
-        siblings: path.siblings,
-    };
-    let encoded = borsh::to_vec(&witness)?;
     std::fs::create_dir_all(&out_dir)?;
-    let witness_path = out_dir.join("witness.csv");
-    let csv = encoded
-        .iter()
-        .map(u8::to_string)
-        .collect::<Vec<_>>()
-        .join(",");
-    std::fs::write(&witness_path, &csv)?;
-    println!("WITNESS_FILE={}", witness_path.display());
-    println!("WITNESS_BYTES={}", encoded.len());
+    for (i, m) in members.iter().enumerate() {
+        let path = tree.path(i).ok_or("member has no path")?;
+        let witness = ApprovalWitness {
+            nsk: m.nsk,
+            vpk: m.vpk.clone(),
+            identifier: m.identifier,
+            member_index: i as u64,
+            siblings: path.siblings,
+        };
+        let encoded = borsh::to_vec(&witness)?;
+        let wp = out_dir.join(format!("witness{i}.csv"));
+        std::fs::write(
+            &wp,
+            encoded
+                .iter()
+                .map(u8::to_string)
+                .collect::<Vec<_>>()
+                .join(","),
+        )?;
+        println!("MEMBER{i}_ACCOUNT={}", m.account_id);
+        println!(
+            "MEMBER{i}_NULLIFIER={}",
+            hex::encode(pmsig_core::approval_nullifier(
+                &m.nsk,
+                &MULTISIG_ID,
+                &PROPOSAL_ID
+            ))
+        );
+        println!("MEMBER{i}_WITNESS={}", wp.display());
+    }
     Ok(())
 }
 
