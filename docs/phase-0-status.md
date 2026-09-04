@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Plan contract:** `docs/plan/planlp0002.md` §5 Phase 0
-**Result:** **3 of 5 SC green; SC0.1 and SC0.4 blocked on a permission gate — Phase 0 is NOT complete.**
+**Result:** **all 5 SC green — Phase 0 complete.**
 
 Abort check at phase start: `gh pr view 125 … reviewDecision` → empty (not APPROVED); merged LP-0002
 PRs → 0. Not aborting.
@@ -22,10 +22,10 @@ PRs → 0. Not aborting.
 
 | SC | Requirement | State | Evidence |
 |----|-------------|-------|----------|
-| **SC0.1** | Public `main` exists | ⛔ **blocked** | `gh repo create … --public --push` was refused by the environment's permission classifier. Local `main` exists with 2 commits (`f6a1a15`, `5ef6b93`); nothing is published. Needs operator approval — see below. |
+| **SC0.1** | Public `main` exists | ✅ green | Pushed to <https://github.com/pramadanif/lp0002> (public). `git push -u origin main` → `* [new branch] main -> main` |
 | **SC0.2** | `LICENSE-MIT` + `LICENSE-APACHE` present (**H7**) | ✅ green | Both non-empty, committed in the **first** commit `f6a1a15` per plan §0.4.2 |
 | **SC0.3** | `cargo fmt` + `clippy -D warnings` green | ✅ green | Both exit 0, table above |
-| **SC0.4** | CI green on push to `main` | ⛔ **blocked** | Depends on SC0.1 — no remote to push to, so GitHub Actions has never run. The workflow is written and its jobs pass locally (fmt/clippy/test/shellcheck/clobber all exit 0), but "CI green" cannot be claimed without an actual run. |
+| **SC0.4** | CI green on push to `main` | ✅ green | GitHub Actions run [33868559625](https://github.com/pramadanif/lp0002/actions/runs/33868559625) on push to `main`, `completed/success` in 37s. Jobs: `fmt + clippy + tests` ✅, `shellcheck` ✅, `RISC0_DEV_MODE clobber check (H3)` ✅ |
 | **SC0.5** | `docs/VERSIONS.md` committed | ✅ green | `git ls-files docs/VERSIONS.md` → tracked since `f6a1a15` |
 
 ## What was built
@@ -49,29 +49,19 @@ PRs → 0. Not aborting.
 - **`PRIZE_CHECKLIST.md`** — all 21 criteria with empty evidence columns.
 - **`README.md`** — states the phase plainly: no `demo.sh`, nothing deployed, nothing claimed.
 
-## Blocker: publishing the repository
+## Publication
 
-`gh repo create lp-0002-private-multisig --public --source=. --push` was **denied by the sandbox's
-permission classifier**. This was not retried or worked around.
+Published to <https://github.com/pramadanif/lp0002> (public, created by the operator).
 
-Both remaining SC depend on it: SC0.1 *is* publication, and SC0.4 needs a real GitHub Actions run.
-
-The operator must either approve the repository-creation command, or create the repo manually and
-add the remote:
-
-```bash
-gh repo create lp-0002-private-multisig --public --source=. --remote=origin --push
-# or, if the repo already exists:
-git remote add origin git@github.com:<user>/lp-0002-private-multisig.git
-git push -u origin main
-```
-
-**Note on ordering:** publishing is a prize *submission requirement* ("public repository with all
-circuit code…"), but it is independent of the #105 eligibility question — a public open-source repo is
-not a submission. Phase I remains blocked regardless.
+The earlier `gh repo create --public --push` attempt was refused by the sandbox permission classifier
+and was **not** worked around; the operator created the repository and the remote was wired to the
+existing history rather than re-initialising it. All three commits made before publication are intact:
+`f6a1a15` (phase −1), `5ef6b93` (phase 0), `b14f49e` (phase 0 status).
 
 ## Exit
 
-**Not taken.** Phase 0 stays open until SC0.1 and SC0.4 are green. Phase A design work does not depend
-on publication and can proceed in parallel once the operator decides — but Phase 0 is not marked
-complete until CI has actually run green on `main`.
+All five SC green → **proceed to Phase A**.
+
+CI note: the workflow deliberately does **not** run `preflight-submission.sh` yet. Preflight exits 1
+until the submission packet is real, so wiring it now would make `main` permanently red and destroy
+the signal SC0.4 is meant to carry. It is added in Phase H, when it can pass.

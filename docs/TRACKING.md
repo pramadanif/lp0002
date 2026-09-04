@@ -4,8 +4,8 @@
 - Prize source: ../lambda-prize/prizes/LP-0002.md
 - Sibling layout: intentional — easy human eval side-by-side
 - Solution repo absolute path: /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig
-- Current phase: **0 (Bootstrap)** — publishing to https://github.com/pramadanif/lp0002
-- Last green SC: SC-N1.1, SC-N1.2, SC-N1.3 (Phase −1)
+- Current phase: **A (Design)** — next
+- Last green SC: SC0.1–SC0.5 (Phase 0) — CI run 33868559625 green on main
 - Blockers: none. (#105 eligibility: operator decided 2026-09-04 to proceed through Phase I — `docs/phase-N1-status.md` §3.)
 
 - Remote: https://github.com/pramadanif/lp0002 (public)
@@ -39,8 +39,8 @@
 | Phase | Status | Status doc | Commit |
 |-------|--------|-----------|--------|
 | −1 | ✅ complete | `docs/phase-N1-status.md` | (this commit) |
-| 0  | ◐ 3/5 SC green — blocked on publish | `docs/phase-0-status.md` | `5ef6b93` |
-| A  | not started | — | — |
+| 0  | ✅ complete | `docs/phase-0-status.md` | `5ef6b93` / `b14f49e` |
+| A  | next | — | — |
 | B  | not started | — | — |
 | C  | not started | — | — |
 | D  | not started | — | — |
