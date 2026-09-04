@@ -57,11 +57,26 @@ step** and stops the sequencer on the way out. One real fix came out of this: th
 config *file*, not its directory — LEZ's README shows both forms, and passing the directory fails
 with `Is a directory (os error 21)`.
 
-**Not started, and each is substantial:**
-1. Deploying both programs — needs LEZ's `wallet DeployProgram`, itself another large build.
-2. Driving the lifecycle through the **privacy-preserving path** — needs the SPEL CLI built, and
-   `docs/VERSIONS.md` **U-6** is still open: whether SPEL's CLI can submit the private path at all,
-   or only public transactions.
+**Both programs are now deployed to a live local sequencer.** LEZ's own `wallet deploy-program`
+put them on chain:
+
+| Program | Bytes | ImageID | Deployment tx | Block |
+|---------|-------|---------|---------------|-------|
+| `membership` | 377,084 | `821c23d9…61f460ff` | `2decd739…00924f5a` | 2 |
+| `multisig` | 469,516 | `cee07cd3…f465ed36` | `1a822979…6224bd92` | 4 |
+
+Both transactions are retrievable via `getTransaction` and their payloads begin with the ELF magic,
+so the bytecode is genuinely on chain. Evidence: `artifacts/phase-E-deployment-local.txt`.
+
+**A correction that came out of this:** `getProgramIds` returns only LEZ's **built-in** programs
+(`amm`, `authenticated_transfer`, `pinata`, `privacy_preserving_circuit`, `token`). It is a name
+registry, not a list of deployed user programs, so a freshly deployed program does **not** appear
+there — an easy thing to misread as a failed deployment. This does not affect the version fingerprint
+in `docs/VERSIONS.md`, which compared exactly those built-in programs.
+
+**Still not started, and each is substantial:**
+1. Submitting a multisig instruction. `docs/VERSIONS.md` **U-6** is still open: whether SPEL's CLI can
+   submit the **privacy-preserving** path at all, or only public transactions. The CLI is building.
 3. The composition cost. `env::verify` inside the PPE circuit needs *succinct* receipts, i.e.
    recursion. The standalone membership proof is a 53 s **composite** receipt; a recursive
    composition is materially more expensive, and no measurement of it exists yet. Nothing in this

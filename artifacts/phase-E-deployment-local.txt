@@ -1,0 +1,31 @@
+# Phase E evidence: both programs deployed to a live standalone LEZ sequencer
+captured_utc: 2026-09-04T13:29:06Z
+commit: a58bf97
+sequencer: standalone LEZ v0.2.4, http://127.0.0.1:3040
+
+## Deployments (via LEZ's own `wallet deploy-program`)
+
+  membership.bin  377084 bytes
+    ImageID  821c23d90f97d5daff92b91bfbb219c3be07ec08b1b5e6cc3a65712461f460ff
+    tx       2decd739fe989b93c5dbafe04d8ffaf97ba170ad4e0d5cd107770f8c00924f5a
+    included in block 2
+
+  multisig.bin    469516 bytes
+    ImageID  cee07cd3758b6269ea94de3e80e55c64976b5e1974a58b8a4211d0eff465ed36
+    tx       1a8229795f414532a8a66b4882665699d84380a40aeb42a09ed226906224bd92
+    included in block 4
+
+## Verification
+  Both transactions are retrievable via getTransaction and their payloads begin with the
+  ELF magic (base64 'f0VMRg' = 0x7f 'E' 'L' 'F'), i.e. the program bytecode is on chain.
+  Chain height at capture: 6.
+
+## A correction worth recording
+  getProgramIds returns only LEZ's BUILT-IN programs (amm, authenticated_transfer, pinata,
+  privacy_preserving_circuit, token). It is a name registry, not a list of deployed user
+  programs, so a deployed program does NOT appear there. This does not affect the version
+  fingerprint in docs/VERSIONS.md, which compared exactly those built-in programs.
+
+## Still not demonstrated
+  Submitting a multisig instruction (create/propose/approve/execute), and the
+  privacy-preserving path. See docs/VERSIONS.md U-6.
