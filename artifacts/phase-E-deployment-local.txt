@@ -29,3 +29,52 @@ sequencer: standalone LEZ v0.2.4, http://127.0.0.1:3040
 ## Still not demonstrated
   Submitting a multisig instruction (create/propose/approve/execute), and the
   privacy-preserving path. See docs/VERSIONS.md U-6.
+
+## U-6 RESOLVED: the SPEL CLI does support the privacy-preserving path
+
+Read from `spel-cli/src/tx.rs` at SPEL main 5126b7ed:
+
+  line 434  `has_private` — true when any account id carries a `Private/` prefix
+  line 442  builds `ProgramWithDependencies` (program + deps from `--bin-<NAME>`)
+  line 473  `AccountIdentity::PrivateOwned(account_id)` for private accounts
+  line 502  `send_privacy_preserving_tx(pp_accounts, instruction_data, &program_with_deps)`
+  line 687  public transactions take a different branch: `LeeTransaction::Public(tx)`
+
+So the invocation shape for an anonymous approval is:
+
+  spel --idl artifacts/multisig-idl.json -p artifacts/multisig.bin \
+       --bin-membership artifacts/membership.bin \
+       -- approve --approver Private/<account-id> ...
+
+The `--bin-<NAME>` dependency mechanism is exactly what resolves the multisig program's
+ChainedCall to the membership program, which is the composition ADR-001 D2 describes.
+
+The CLI also generated all four of our instructions from the IDL with correct argument types,
+which is independent confirmation that the IDL (criterion P-U3) is well-formed and usable.
+
+## A multisig CREATED on chain and read back
+
+  instruction : create_multisig  (via the SPEL CLI, driven from artifacts/multisig-idl.json)
+  tx          : 909f05c0cc5a951b3d1abf3a18a49bd930b510af50750a191eb09f6d18a95c58
+  status      : confirmed, included in a block
+  config PDA  : Fy9EeAmiYXPXbbkk4D7zfFTjD7PSWFnKZxcLvE8FKZHH
+                seeds [program_id, Arg(config_hash)], config_hash
+                0781571008460e30f89bf3eb488440a9f91421c7a8b8778b30dd26aedbaf5ba3
+
+  Read back with getAccount and Borsh-decoded (108 bytes):
+
+    program_owner         = the deployed multisig program  (cee07cd3..f465ed36)  ✓
+    version               = 1
+    member_root           = 8f09c59af9b86c7c52ac54cf1de09356f80b1ca6a4c6cca7e028a9bfb78ca46f  ✓
+    M-of-N                = 2-of-3                                                ✓
+    multisig_id           = a1a1..a1
+    membership_program_id = the deployed membership program (821c23d9..61f460ff)  ✓
+    proposal_count        = 0
+
+  The last line is ADR-002 working on a real chain: the multisig's address is derived from a
+  config_hash that commits to the membership verifier, and the account stored at that address
+  names exactly the membership program that was deployed. Substituting a different verifier
+  would have produced a different address.
+
+  Note: the on-chain state contains a member ROOT and no member list — criterion P-F2 /
+  SC-C.6, now observable on chain rather than only in a unit test.

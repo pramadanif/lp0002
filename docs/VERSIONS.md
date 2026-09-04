@@ -88,7 +88,7 @@ v0.6.0 tag — and that is an unreleased dependency, to be disclosed in `docs/li
 |----|---------|-----------|
 | ~~U-1~~ | ~~Exact LEZ version running on testnet~~ | **RESOLVED in Phase −1** by ImageID fingerprint → v0.2.2/v0.2.3/**v0.2.4** family. See pin decision above |
 | U-2 | `privacy_preserving_circuit` **input encoding** end-to-end (`PrivacyPreservingCircuitInput` construction, witness/dummy inputs) — the `env::verify` chaining mechanism itself is understood (`docs/phase-N1-status.md` §5) | Phase A/B |
-| U-6 | Whether SPEL `main` (unreleased) is stable enough to pin, and whether its CLI submits the private path or public only | Phase C |
+| ~~U-6~~ | ~~Whether SPEL's CLI submits the private path or public only~~ | **RESOLVED in Phase E — it does.** `spel-cli/src/tx.rs:434-502`: the CLI detects `Private/`-prefixed account ids, builds a `ProgramWithDependencies` (the program plus dependency programs supplied via `--bin-<NAME>`), assembles an `AccountIdentity::{PrivateOwned,Public}` list, and calls `send_privacy_preserving_tx`. Public transactions take a separate branch (`LeeTransaction::Public`). The dependency mechanism is what resolves our multisig's `ChainedCall` to the membership program |
 | ~~U-3~~ | ~~Shielded-account commitment byte format + `nonce` / `program_owner` rules~~ | **RESOLVED in Phase −1** — formulas read from LEZ v0.2.4 source with pinned known-answer vectors; see `docs/phase-N1-status.md` §5 |
 | U-4 | Funded testnet key(s) for M members + treasury | **HUMAN GATE** before Phase G |
 | U-5 | Basecamp `.lgx` packaging toolchain + `module.json` schema | Phase F |
