@@ -1,3 +1,8 @@
 .refs/
 logs/
 target/
+
+# Local end-to-end run directory: a LEZ checkout, sequencer state, and a WALLET WITH KEYS.
+# Never commit this. The wallet is a throwaway for an ephemeral local chain, but a key in git
+# history is a key in git history.
+.e2e/
