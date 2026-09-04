@@ -372,3 +372,94 @@ fn the_journal_does_contain_the_approver_account_id() {
 fn word_encode(bytes: &[u8]) -> Vec<u8> {
     bytes.iter().flat_map(|b| [*b, 0, 0, 0]).collect()
 }
+
+/// **SC-D.3 / P-R1** — a proof-generation failure reaches the member as a clear, coded error.
+///
+/// The failure is injected rather than simulated: a truncated program binary is a real thing a
+/// client can end up holding (a partial download, a bad build), and it must not surface as a panic
+/// or an opaque string.
+mod prove_failures {
+    use super::*;
+
+    #[test]
+    fn a_corrupt_program_binary_produces_a_coded_error() {
+        let (claim, witness, pre_states) = alice_approves();
+        let mut broken = program_binary();
+        broken.truncate(broken.len() / 2);
+
+        let err = execute_approval(
+            &broken,
+            SELF_PROGRAM_ID,
+            None,
+            &pre_states,
+            &claim,
+            &witness,
+        )
+        .expect_err("a truncated binary cannot execute");
+
+        let msg = err.to_string();
+        assert!(
+            msg.starts_with("2001 "),
+            "P-R1: the member must get a documented code, got: {msg}"
+        );
+    }
+
+    #[test]
+    fn an_empty_program_binary_produces_a_coded_error() {
+        let (claim, witness, pre_states) = alice_approves();
+        let err = execute_approval(&[], SELF_PROGRAM_ID, None, &pre_states, &claim, &witness)
+            .expect_err("an empty binary cannot execute");
+        assert!(err.to_string().starts_with("2001 "), "got: {err}");
+    }
+
+    /// A rejected witness must be distinguishable from a broken toolchain: the guest's own message
+    /// is passed through, so the member learns *which* check failed.
+    #[test]
+    fn a_guest_rejection_explains_which_check_failed() {
+        let (mut claim, witness, pre_states) = alice_approves();
+        claim.member_root = [0xFF; 32];
+        let err = execute_approval(
+            &program_binary(),
+            SELF_PROGRAM_ID,
+            None,
+            &pre_states,
+            &claim,
+            &witness,
+        )
+        .expect_err("a bad root must be rejected");
+        let msg = err.to_string();
+        assert!(
+            msg.contains("not a member"),
+            "the guest's reason must reach the member, got: {msg}"
+        );
+    }
+
+    /// Dev mode is refused outright: a fake receipt is worse than no receipt.
+    ///
+    /// The refusal *path* is asserted through the error type, and the *trigger* through the pure
+    /// parser. Setting the variable in-process would need `unsafe` (this workspace forbids it) and
+    /// would race every other test; `scripts/prove-bench.sh` covers the real environment by setting
+    /// `RISC0_DEV_MODE=0` and having the proving test assert it is off.
+    #[test]
+    fn dev_mode_is_recognised_from_its_usual_spellings() {
+        use pmsig_sdk::prove::dev_mode_from;
+        for on in ["1", "true", "TRUE", "yes", " 1 "] {
+            assert!(dev_mode_from(Some(on)), "{on:?} should count as dev mode");
+        }
+        for off in ["0", "false", "no", "", "  "] {
+            assert!(
+                !dev_mode_from(Some(off)),
+                "{off:?} should not count as dev mode"
+            );
+        }
+        assert!(!dev_mode_from(None), "unset means off");
+    }
+
+    #[test]
+    fn the_dev_mode_refusal_says_why() {
+        let msg = pmsig_sdk::SdkError::DevModeRefused.to_string();
+        assert!(msg.starts_with("2003 "), "got: {msg}");
+        assert!(msg.contains("fake receipt"), "must say why, got: {msg}");
+        assert!(msg.contains("r0vm"), "must say what is needed, got: {msg}");
+    }
+}

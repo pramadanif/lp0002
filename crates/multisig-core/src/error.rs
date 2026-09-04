@@ -110,6 +110,10 @@ impl fmt::Display for MultisigError {
     }
 }
 
+/// A documented error an integrator handles should compose with `?` and `Box<dyn Error>` like any
+/// other. risc0 guests link `std`, so this costs the guest build nothing.
+impl std::error::Error for MultisigError {}
+
 #[cfg(test)]
 #[allow(
     clippy::expect_used,
@@ -130,6 +134,12 @@ mod tests {
             seen.push(e.code());
         }
         assert_eq!(seen.len(), 13);
+    }
+
+    #[test]
+    fn it_is_a_real_error_type() {
+        fn takes_error(_: Box<dyn std::error::Error>) {}
+        takes_error(Box::new(MultisigError::ThresholdNotMet));
     }
 
     #[test]

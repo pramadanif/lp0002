@@ -15,6 +15,18 @@ path = "src/main.rs"
 pmsig-core.workspace = true
 pmsig-sdk.workspace = true
 pmsig-store.workspace = true
+pmsig-membership-core.workspace = true
+pmsig-multisig-core.workspace = true
+lee_core = { workspace = true, features = ["host"] }
+anyhow.workspace = true
+clap.workspace = true
+hex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+hex.workspace = true
+pmsig-membership-core.workspace = true
 
 [lints]
 workspace = true

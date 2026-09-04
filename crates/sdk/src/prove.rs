@@ -36,7 +36,17 @@ pub struct ApprovalProof {
 /// Whether `RISC0_DEV_MODE` is switched on in this process's environment.
 #[must_use]
 pub fn dev_mode_enabled() -> bool {
-    std::env::var("RISC0_DEV_MODE").is_ok_and(|v| {
+    dev_mode_from(std::env::var("RISC0_DEV_MODE").ok().as_deref())
+}
+
+/// The parsing half of [`dev_mode_enabled`], separated so it can be tested.
+///
+/// Mutating the environment in a test would need `unsafe`, which this workspace forbids — and
+/// rightly, since it races every other test in the process. The interesting logic is which values
+/// count as "on", and that is pure.
+#[must_use]
+pub fn dev_mode_from(value: Option<&str>) -> bool {
+    value.is_some_and(|v| {
         let v = v.trim().to_ascii_lowercase();
         v == "1" || v == "true" || v == "yes"
     })

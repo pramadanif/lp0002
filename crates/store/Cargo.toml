@@ -9,9 +9,14 @@ repository.workspace = true
 
 [dependencies]
 pmsig-core.workspace = true
+pmsig-membership-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+hex.workspace = true
+
+[dev-dependencies]
+lee_core = { workspace = true, features = ["host"] }
 
 [lints]
 workspace = true

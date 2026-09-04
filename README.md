@@ -8,7 +8,7 @@ Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0*
 
 Repository: <https://github.com/pramadanif/lp0002>
 
-> **Status: Phase C of 10 complete.** The membership guest proves and verifies for real
+> **Status: Phase D of 10 complete.** The membership guest proves and verifies for real
 > (`RISC0_DEV_MODE=0`, 53.26 s on a laptop) and the on-chain SPEL program enforces the full
 > lifecycle with a published IDL. The end-to-end privacy-preserving composition has **not** been
 > demonstrated against a running sequencer yet, the demo is not written, and nothing here has touched
@@ -72,7 +72,7 @@ Each phase has a status document recording the exact commands run, their exit co
 | A | ADR, account model, security model, error codes | ✅ [`docs/phase-A-status.md`](docs/phase-A-status.md) |
 | B | Membership + nullifier guest, one real `RISC0_DEV_MODE=0` proof | ✅ [`docs/phase-B-status.md`](docs/phase-B-status.md) |
 | C | SPEL program: create / propose / approve / execute, IDL | ✅ [`docs/phase-C-status.md`](docs/phase-C-status.md) |
-| D | SDK, CLI, restart-resume, peer privacy | ☐ |
+| D | SDK, CLI, restart-resume, peer privacy | ✅ [`docs/phase-D-status.md`](docs/phase-D-status.md) |
 | E | `demo.sh` against a standalone sequencer, CI e2e | ☐ |
 | F | Basecamp app, downloadable `.lgx` | ☐ |
 | G | Testnet deployment, CU costs, public verification | ☐ |
@@ -116,7 +116,7 @@ with `RISC0_DEV_MODE=0`, and it will fail — not skip — if a required tool is
 crates/core      shared types and hash formulas (host + guest)
 crates/multisig-core  on-chain state, error codes, lifecycle rules
 crates/membership-core witness types and the membership check
-crates/sdk       client-side proving and transaction building
+crates/sdk       client-side proving, and the member-facing API
 crates/store     local persistence for partial approval sets
 crates/cli       `pmsig` command-line client
 scripts/         preflight, dev-mode clobber check; e2e + verification land later

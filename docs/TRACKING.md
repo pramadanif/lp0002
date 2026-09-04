@@ -4,8 +4,8 @@
 - Prize source: ../lambda-prize/prizes/LP-0002.md
 - Sibling layout: intentional — easy human eval side-by-side
 - Solution repo absolute path: /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig
-- Current phase: **D (SDK / CLI / resume / peer privacy)** — next
-- Last green SC: SC-C.1–SC-C.8 (Phase C) — 74 tests, IDL published
+- Current phase: **E (demo.sh + CI e2e)** — next
+- Last green SC: SC-D.1–SC-D.5 (Phase D) — 102 tests, CLI lifecycle + resume
 - Blockers: none. (#105 eligibility: operator decided 2026-09-04 to proceed through Phase I — `docs/phase-N1-status.md` §3.)
 
 - Remote: https://github.com/pramadanif/lp0002 (public)
@@ -51,9 +51,9 @@
 | 0  | ✅ complete | `docs/phase-0-status.md` | `5ef6b93` / `b14f49e` |
 | A  | ✅ complete | `docs/phase-A-status.md` | `ec9534a` |
 | B  | ✅ complete | `docs/phase-B-status.md` | `f8b6e5f` |
-| C  | ✅ complete | `docs/phase-C-status.md` | (this commit) |
-| D  | next | — | — |
-| E  | not started | — | — |
+| C  | ✅ complete | `docs/phase-C-status.md` | `8e2f0b1` |
+| D  | ✅ complete | `docs/phase-D-status.md` | (this commit) |
+| E  | next | — | — |
 | F  | not started | — | — |
 | G  | not started | — | — |
 | H  | not started | — | — |

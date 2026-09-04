@@ -5,6 +5,7 @@
 
 use thiserror::Error;
 
+pub mod member;
 pub mod prove;
 
 /// Errors surfaced to a member by the SDK.
@@ -27,7 +28,30 @@ pub enum SdkError {
     )]
     DevModeRefused,
 
-    /// Placeholder for codes not yet wired. Removed once Phase D completes the catalogue.
+    /// 2002 — `r0vm` is not installed or not on `PATH`.
+    #[error(
+        "2002 ProverNotFound: r0vm was not found. Install it with:\n  \
+         curl -L https://risczero.com/install | bash && rzup install"
+    )]
+    ProverNotFound,
+
+    /// 2004 — the supplied key is not a member of this multisig.
+    #[error("2004 NotAMember: this key does not derive an npk under the multisig's member root")]
+    NotAMember,
+
+    /// 2006 — this member has already approved this proposal.
+    #[error("2006 AlreadyApproved: this member's nullifier is already recorded for this proposal")]
+    AlreadyApproved,
+
+    /// 2007 — local state is behind the chain.
+    #[error("2007 StaleProposal: the proposal has already reached its threshold or been executed")]
+    StaleProposal,
+
+    /// 2010 — the local approval store could not be read.
+    #[error("2010 StoreCorrupt: {0}")]
+    Store(String),
+
+    /// Placeholder for codes not yet wired.
     #[error("not implemented yet: {0}")]
     NotImplemented(&'static str),
 }
@@ -57,5 +81,17 @@ mod tests {
         assert!(SdkError::ProofGenerationFailed("x".into())
             .to_string()
             .starts_with("2001 "));
+        assert!(SdkError::ProverNotFound.to_string().starts_with("2002 "));
+        assert!(SdkError::NotAMember.to_string().starts_with("2004 "));
+        assert!(SdkError::AlreadyApproved.to_string().starts_with("2006 "));
+        assert!(SdkError::StaleProposal.to_string().starts_with("2007 "));
+        assert!(SdkError::Store("x".into()).to_string().starts_with("2010 "));
+    }
+
+    /// P-R1: an error a member sees must say what to do next, not just what failed.
+    #[test]
+    fn prover_not_found_tells_the_member_how_to_fix_it() {
+        let msg = SdkError::ProverNotFound.to_string();
+        assert!(msg.contains("rzup install"), "must name the remedy: {msg}");
     }
 }
