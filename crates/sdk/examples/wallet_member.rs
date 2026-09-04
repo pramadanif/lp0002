@@ -28,22 +28,34 @@ const CO_MEMBERS: [Digest32; 2] = [[0x22; 32], [0x33; 32]];
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args().skip(1);
-    let storage: PathBuf = args.next().ok_or("usage: wallet_member <storage.json> <out-dir>")?.into();
-    let out_dir: PathBuf = args.next().ok_or("usage: wallet_member <storage.json> <out-dir>")?.into();
+    let storage: PathBuf = args
+        .next()
+        .ok_or("usage: wallet_member <storage.json> <out-dir>")?
+        .into();
+    let out_dir: PathBuf = args
+        .next()
+        .ok_or("usage: wallet_member <storage.json> <out-dir>")?
+        .into();
 
     let doc: Value = serde_json::from_slice(&std::fs::read(&storage)?)?;
-    let account = doc["key_chain"]["accounts"]
+    let account = dig(&doc, &["key_chain", "accounts"])?
         .as_array()
-        .ok_or("no accounts")?
+        .ok_or("`key_chain.accounts` is not an array")?
         .iter()
         .find_map(|a| a.get("Private"))
         .ok_or("the wallet has no private (shielded) account")?;
 
-    let account_id: AccountId = account["account_id"].as_str().ok_or("no account_id")?.parse()?;
-    let key = &account["data"]["value"][0];
-    let nsk = bytes32(&key["private_key_holder"]["nullifier_secret_key"])?;
-    let vpk_bytes = byte_vec(&key["viewing_public_key"])?;
-    let wallet_npk = bytes32(&key["nullifier_public_key"])?;
+    let account_id: AccountId = dig(account, &["account_id"])?
+        .as_str()
+        .ok_or("account_id is not a string")?
+        .parse()?;
+    let key = dig(account, &["data", "value"])?
+        .as_array()
+        .and_then(|v| v.first())
+        .ok_or("the account has no key material")?;
+    let nsk = bytes32(dig(key, &["private_key_holder", "nullifier_secret_key"])?)?;
+    let vpk_bytes = byte_vec(dig(key, &["viewing_public_key"])?)?;
+    let wallet_npk = bytes32(dig(key, &["nullifier_public_key"])?)?;
 
     // --- cross-check 1: our npk derivation reproduces the wallet's own npk ---
     let derived_npk = npk_of(&nsk).to_byte_array();
@@ -81,11 +93,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!(
         "VERIFIER={}",
-        verifier.iter().map(u32::to_string).collect::<Vec<_>>().join(",")
+        verifier
+            .iter()
+            .map(u32::to_string)
+            .collect::<Vec<_>>()
+            .join(",")
     );
     println!(
         "NULLIFIER={}",
-        hex::encode(pmsig_core::approval_nullifier(&nsk, &MULTISIG_ID, &PROPOSAL_ID))
+        hex::encode(pmsig_core::approval_nullifier(
+            &nsk,
+            &MULTISIG_ID,
+            &PROPOSAL_ID
+        ))
     );
 
     // --- the witness: secret, so it goes to a file the caller reads, not to stdout ---
@@ -99,11 +119,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let encoded = borsh::to_vec(&witness)?;
     std::fs::create_dir_all(&out_dir)?;
     let witness_path = out_dir.join("witness.csv");
-    let csv = encoded.iter().map(u8::to_string).collect::<Vec<_>>().join(",");
+    let csv = encoded
+        .iter()
+        .map(u8::to_string)
+        .collect::<Vec<_>>()
+        .join(",");
     std::fs::write(&witness_path, &csv)?;
     println!("WITNESS_FILE={}", witness_path.display());
     println!("WITNESS_BYTES={}", encoded.len());
     Ok(())
+}
+
+/// Walks a JSON path, naming the field that is missing rather than yielding a silent `Null`.
+fn dig<'a>(v: &'a Value, path: &[&str]) -> Result<&'a Value, Box<dyn std::error::Error>> {
+    let mut cur = v;
+    for key in path {
+        cur = cur
+            .get(key)
+            .ok_or_else(|| format!("wallet storage has no `{}`", path.join(".")))?;
+    }
+    Ok(cur)
 }
 
 fn bytes32(v: &Value) -> Result<Digest32, Box<dyn std::error::Error>> {
@@ -131,9 +166,22 @@ fn decode_vpk(bytes: &[u8]) -> Result<ViewingPublicKey, Box<dyn std::error::Erro
 
 fn read_membership_image_id() -> Result<[u32; 8], Box<dyn std::error::Error>> {
     let doc = std::fs::read_to_string("artifacts/IMAGE_IDS.md")?;
-    let section = doc.split("## `membership`").nth(1).ok_or("no membership section")?;
-    let line = section.lines().find(|l| l.contains("ProgramId")).ok_or("no ProgramId row")?;
-    let inner = line.split('[').nth(1).and_then(|s| s.split(']').next()).ok_or("malformed")?;
-    let words: Vec<u32> = inner.split(',').map(|w| w.trim().parse::<u32>()).collect::<Result<_, _>>()?;
+    let section = doc
+        .split("## `membership`")
+        .nth(1)
+        .ok_or("no membership section")?;
+    let line = section
+        .lines()
+        .find(|l| l.contains("ProgramId"))
+        .ok_or("no ProgramId row")?;
+    let inner = line
+        .split('[')
+        .nth(1)
+        .and_then(|s| s.split(']').next())
+        .ok_or("malformed")?;
+    let words: Vec<u32> = inner
+        .split(',')
+        .map(|w| w.trim().parse::<u32>())
+        .collect::<Result<_, _>>()?;
     Ok(<[u32; 8]>::try_from(words.as_slice())?)
 }

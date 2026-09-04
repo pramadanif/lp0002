@@ -46,7 +46,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!(
             "MEMBER{}_NULLIFIER={}",
             i,
-            hex::encode(pmsig_core::approval_nullifier(nsk, &MULTISIG_ID, &PROPOSAL_ID))
+            hex::encode(pmsig_core::approval_nullifier(
+                nsk,
+                &MULTISIG_ID,
+                &PROPOSAL_ID
+            ))
         );
     }
     Ok(())
@@ -71,8 +75,9 @@ fn parse_program_id(arg: &str) -> Result<[u32; 8], Box<dyn std::error::Error>> {
 
 /// Reads the membership `ProgramId` recorded by `scripts/build-guests.sh`.
 fn read_membership_image_id() -> Result<[u32; 8], Box<dyn std::error::Error>> {
-    let doc = std::fs::read_to_string("artifacts/IMAGE_IDS.md")
-        .map_err(|e| format!("artifacts/IMAGE_IDS.md: {e} — run ./scripts/build-guests.sh first"))?;
+    let doc = std::fs::read_to_string("artifacts/IMAGE_IDS.md").map_err(|e| {
+        format!("artifacts/IMAGE_IDS.md: {e} — run ./scripts/build-guests.sh first")
+    })?;
     let section = doc
         .split("## `membership`")
         .nth(1)
