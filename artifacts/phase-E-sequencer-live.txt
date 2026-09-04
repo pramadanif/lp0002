@@ -1,17 +1,29 @@
 # Phase E evidence: the standalone LEZ sequencer runs
-captured_utc: 2026-09-04T13:17:01Z
-commit: 2e51eee
+captured_utc: 2026-09-04T13:18:21Z
+commit: 3860557
 
 ## Build
-cargo build --release --features standalone -p sequencer_service  (LEZ v0.2.4)
-errors: 0
-binary: .refs/lez/target/release/sequencer_service (31482864 bytes)
+  cargo build --release --features standalone -p sequencer_service   (LEZ v0.2.4)
+  errors: 0
+  binary: .refs/lez/target/release/sequencer_service (31482864 bytes)
 
-## Startup (from .e2e/run/sequencer.log)
+## The node running (from .e2e/run/sequencer.log, ANSI stripped)
+  [2026-09-04T13:16:44Z INFO  sequencer_core] Created block with 1 transactions in 0 seconds
+  [2026-09-04T13:16:44Z INFO  sequencer_service] Block with id 3 created
+  [2026-09-04T13:16:59Z INFO  sequencer_core] Created block with 1 transactions in 0 seconds
+  [2026-09-04T13:16:59Z INFO  sequencer_service] Block with id 4 created
+  [2026-09-04T13:17:14Z INFO  sequencer_core] Created block with 1 transactions in 0 seconds
+  [2026-09-04T13:17:14Z INFO  sequencer_service] Block with id 5 created
+  [2026-09-04T13:17:29Z INFO  sequencer_core] Created block with 1 transactions in 0 seconds
+  [2026-09-04T13:17:29Z INFO  sequencer_service] Block with id 6 created
 
 ## Driven by scripts/e2e-local-sequencer.sh
-    sequencer is live — getLastBlockId = 2
+  ==> waiting for the sequencer RPC at http://127.0.0.1:3040
+      sequencer is live — getLastBlockId = 2
 
-## Result
-The script then FAILS at the unimplemented lifecycle step (exit 1) rather than
-reporting a pass it has not earned, and stops the sequencer on the way out.
+## What this does and does not show
+  DOES: a real standalone LEZ node builds, starts, serves JSON-RPC on 0.0.0.0:3040,
+        and produces blocks; the e2e script starts it, waits on checkHealth, and
+        reads its height.
+  DOES NOT: deploy either program, submit a multisig transaction, or exercise the
+        privacy-preserving path. The script fails at that step by design (exit 1).
