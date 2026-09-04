@@ -103,12 +103,24 @@ merkle_path)` and:
 Composed, these say: *the approver knows the `nsk` of a member of this multisig, and that member's
 account is live and unspent on chain right now.*
 
-**Why the last assertion is not redundant.** Without it the guest would take `nsk` on trust. A
-member could hand their genuine `nsk` to the PPE circuit (to legitimately spend their own account)
-while handing a *different* `nsk` to the membership guest — producing a different approval nullifier
-on every attempt and voting as many times as they liked. Re-deriving the account id inside the guest
-and matching it against the PPE-bound pre-state is what makes the nullifier binding. **SC-B.5**
-tests exactly this: replacing the assertion with a derivation-only stub must make a test fail.
+**Why the assertion is not redundant.** Without it, the guest proves only *"someone knows an `nsk`
+whose `npk` is in the member set"*. That is a statement about key material, not about the chain — it
+is true of a member who never created a shielded account, or whose account has been fully spent, and
+it stays true forever once the key exists. That is precisely the derivation-only property rejected in
+prize PR #91.
+
+With the assertion, the approval is pinned to a **specific live account in this transaction**: the one
+LEZ's circuit proved is in the current commitment set and is being spent now. The approver must have
+standing on chain at the moment of approval, not merely once have held a key.
+
+To be precise about what the assertion does *not* do: it is not what prevents double-voting. That is
+INV-4, and it holds through `nf_approve` being a deterministic function of `nsk` — a member cannot mint
+a second nullifier by substituting a different `nsk`, because a different `nsk` would fail the
+membership check in the first place. What removing the assertion would allow is an approval whose
+on-chain footprint is an account **unrelated to the member** — the transaction spends some account,
+the witness names a member key, and nothing ties the two together. **SC-B.5** demonstrates exactly
+that: a witness that does not control the presented account is accepted by a derivation-only variant
+and rejected by this one.
 
 ### D5 — Approval nullifiers are keyed to the member secret, the multisig and the proposal
 

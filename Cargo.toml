@@ -5,7 +5,11 @@ members = [
     "crates/sdk",
     "crates/cli",
     "crates/store",
+    "crates/membership-core",
+    "crates/guest-tools",
 ]
+# Guests cross-compile to riscv32im-risc0-zkvm-elf and are built separately, not as workspace members.
+exclude = ["programs/membership-lez"]
 
 [workspace.package]
 version = "0.1.0"
@@ -18,9 +22,16 @@ repository = "https://github.com/pramadanif/lp0002"
 pmsig-core = { path = "crates/core" }
 pmsig-sdk = { path = "crates/sdk" }
 pmsig-store = { path = "crates/store" }
+pmsig-membership-core = { path = "crates/membership-core" }
 
 anyhow = "1"
 borsh = { version = "1.5", features = ["derive"] }
+
+# LEZ, pinned to the revision the live testnet runs (docs/VERSIONS.md). We depend on lee_core
+# rather than reimplementing its hashes, so byte-compatibility is structural, not asserted.
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.4" }
+# Same version LEZ v0.2.4 pins; default-features off keeps guest cross-compilation free of `ring`.
+risc0-zkvm = { version = "3.0.6", default-features = false, features = ["std"] }
 hex = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

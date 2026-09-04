@@ -1,0 +1,22 @@
+[package]
+name = "pmsig-guest-tools"
+description = "Wraps a guest ELF into a risc0 ProgramBinary and reports its ImageID (the LEZ ProgramId)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "pmsig-image-id"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+hex.workspace = true
+risc0-zkvm = { workspace = true, features = ["std"] }
+risc0-binfmt = "3.0.5"
+risc0-zkos-v1compat = "=2.2.3"
+
+[lints]
+workspace = true

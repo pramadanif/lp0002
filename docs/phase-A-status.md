@@ -50,10 +50,16 @@ rather than assumed:
 Composed: *the approver knows the `nsk` of a member of this multisig, and that member's account is
 live and unspent right now.*
 
-The re-derivation in the guest is not redundant, and `docs/tried-failed.md` records why: without it,
-a member could give their real `nsk` to the PPE circuit and a different one to the membership guest,
-producing a fresh nullifier per attempt and voting without limit. **SC-B.5** exists to prove that
-assertion is load-bearing — a derivation-only stub must make a test fail.
+The re-derivation in the guest is what makes the binding **live**: without it the guest would prove
+only that someone knows a member key — true of a member with no shielded account at all, and true
+forever once the key exists. That is the derivation-only property rejected in prize PR #91.
+
+**Correction made during Phase B.** The first draft of this rationale claimed the assertion was what
+prevented double-voting, via a member substituting a different `nsk` for the guest. That attack does
+not work: the substituted key would also have to be a leaf under `member_root`. Double-voting is
+prevented by INV-4 alone. The assertion buys liveness, not double-vote resistance. The design did not
+change; the justification was wrong and is corrected in ADR-001 D4, with the error recorded in
+`docs/tried-failed.md`. **SC-B.5** tests the property actually at stake.
 
 ## Privacy claim verified against source, not assumed
 

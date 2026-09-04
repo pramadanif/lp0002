@@ -1,0 +1,18 @@
+[package]
+name = "pmsig-membership-program"
+description = "LEZ-native membership program: proves an approver belongs to the multisig member set and owns a live shielded account, and binds the approval nullifier."
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "membership"
+path = "src/main.rs"
+
+[dependencies]
+pmsig-core = { path = "../../crates/core" }
+pmsig-membership-core = { path = "../../crates/membership-core" }
+lee_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.4" }
+# Pinned exactly, default features off: a floating patch pulls the prover stack (groth16, keccak,
+# recursion) into the guest, where `getrandom` has no supported backend for riscv32im-risc0-zkvm-elf.
+risc0-zkvm = { version = "3.0.6", default-features = false, features = ["std"] }

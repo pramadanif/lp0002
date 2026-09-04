@@ -69,16 +69,36 @@ some of those environments are Macs.
 ### The membership guest cannot take `nsk` on trust
 
 **Nearly shipped.** The first sketch had the membership guest verify `npk ∈ member_root` and compute
-the approval nullifier from the witness `nsk` — and stop there. It looks complete: membership proven,
-nullifier bound to a secret.
+the approval nullifier from the witness `nsk` — and stop there. Membership proven, nullifier bound to
+a secret; it reads as complete.
 
-**Why that is broken.** Nothing tied the `nsk` given to *our guest* to the `nsk` given to LEZ's
-privacy-preserving circuit. A member could pass their real `nsk` to the PPE circuit — legitimately
-spending their own account — while passing a different `nsk` to the membership guest on each attempt.
-Every attempt yields a different `nf_approve`, and one member votes as many times as they like. The
-double-vote defence would have been decorative.
+**Why that is not enough.** Nothing tied the witness to the transaction. The guest would prove only
+*"someone knows an `nsk` whose `npk` is in the member set"* — a statement about key material, not
+about chain state. It is true of a member who never created a shielded account, true of one whose
+account has been fully spent, and it remains true forever once the key exists. That is exactly the
+derivation-only property reviewers rejected in prize PR #91, and gate H8 exists to catch it.
 
 **Fix.** The guest re-derives `AccountId::for_regular_private_account(npk, vpk, identifier)` from its
-own witnesses and asserts it equals the approver's `pre_state.account_id` — the account the PPE
-circuit independently bound to a live commitment. ADR-001 D4; the assertion is exactly what **SC-B.5**
-requires a test to catch the removal of.
+own witnesses and asserts it equals the approver's `pre_state.account_id` — the account LEZ's PPE
+circuit independently proved is live, unspent and being spent in *this* transaction (ADR-001 D4).
+
+### A wrong reason for the right fix — corrected
+
+**Claimed, in the first draft of ADR-001 D4 and of this file:** that without the account-binding
+assertion a member could double-vote, by handing their real `nsk` to LEZ's PPE circuit and a
+*different* `nsk` to the membership guest, minting a fresh nullifier on each attempt.
+
+**That reasoning is wrong**, and it is recorded here rather than quietly deleted. The substituted
+`nsk` would have to derive an `npk` that is itself a leaf under `member_root` — i.e. the attacker
+would need a *second* key that is already a member. A member holds one. So the substitution fails at
+the membership check, before the nullifier is ever computed.
+
+**What is actually true.** Double-voting is prevented by INV-4 alone: `nf_approve` is a deterministic
+function of `(nsk, multisig_id, proposal_id)`, and a member has only one `nsk`. The account-binding
+assertion buys something different and still necessary — **liveness**. Without it, an approval's
+on-chain footprint could be an account with no relationship to the member: the transaction spends some
+account, the witness names a member key, and nothing connects them.
+
+The fix did not change; the justification did. `SC-B.5` now tests the property that is actually at
+stake — a witness that does not control the presented account is accepted by a derivation-only variant
+and rejected by the real one.

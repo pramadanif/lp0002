@@ -9,7 +9,16 @@ repository.workspace = true
 
 [dependencies]
 pmsig-core.workspace = true
+pmsig-membership-core.workspace = true
 thiserror.workspace = true
+# Default features (client + bonsai) drive the external `r0vm` that rzup installs. The in-process
+# `prove` feature is deliberately NOT enabled: on macOS it compiles Metal kernels, which needs full
+# Xcode, and an evaluator on a clean Mac would hit a build failure rather than a working demo.
+risc0-zkvm = { version = "3.0.6", features = ["std"] }
+lee_core = { workspace = true, features = ["host"] }
+
+[dev-dependencies]
+hex.workspace = true
 
 [lints]
 workspace = true

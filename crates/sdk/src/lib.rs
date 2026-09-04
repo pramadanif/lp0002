@@ -5,6 +5,8 @@
 
 use thiserror::Error;
 
+pub mod prove;
+
 /// Errors surfaced to a member by the SDK.
 ///
 /// Reliability criterion **P-R1** requires proof-generation failures to reach the member as a
@@ -14,7 +16,18 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum SdkError {
-    /// Placeholder so the surface compiles before Phase A fixes the catalogue.
+    /// 2001 — the prover did not produce a receipt.
+    #[error("2001 ProofGenerationFailed: {0}")]
+    ProofGenerationFailed(String),
+
+    /// 2003 — `RISC0_DEV_MODE` is on, which produces a fake receipt that proves nothing.
+    #[error(
+        "2003 DevModeRefused: RISC0_DEV_MODE is enabled, which produces a fake receipt. \
+         Unset it and re-run; a real proof needs r0vm."
+    )]
+    DevModeRefused,
+
+    /// Placeholder for codes not yet wired. Removed once Phase D completes the catalogue.
     #[error("not implemented yet: {0}")]
     NotImplemented(&'static str),
 }
@@ -27,5 +40,15 @@ mod tests {
     fn error_renders_its_context() {
         let e = SdkError::NotImplemented("prove");
         assert_eq!(e.to_string(), "not implemented yet: prove");
+    }
+
+    /// Error text must carry the documented code so a member can look it up in
+    /// `docs/error-codes.md` (P-R1, P-R3).
+    #[test]
+    fn errors_carry_their_documented_code() {
+        assert!(SdkError::DevModeRefused.to_string().starts_with("2003 "));
+        assert!(SdkError::ProofGenerationFailed("x".into())
+            .to_string()
+            .starts_with("2001 "));
     }
 }

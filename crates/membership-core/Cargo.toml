@@ -1,6 +1,6 @@
 [package]
-name = "pmsig-core"
-description = "Shared types and domain-separated hash formulas for the private M-of-N multisig. Compiles for both host and risc0 guest."
+name = "pmsig-membership-core"
+description = "Instruction type shared by the membership guest and its host-side callers."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,13 +8,13 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+pmsig-core.workspace = true
 borsh.workspace = true
 serde.workspace = true
-risc0-zkvm.workspace = true
+lee_core.workspace = true
 
 [dev-dependencies]
 lee_core = { workspace = true, features = ["host"] }
-hex.workspace = true
 
 [lints]
 workspace = true
