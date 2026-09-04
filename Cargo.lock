@@ -2149,6 +2149,7 @@ dependencies = [
 name = "pmsig-sdk"
 version = "0.1.0"
 dependencies = [
+ "borsh",
  "hex",
  "lee_core",
  "pmsig-core",
@@ -2156,6 +2157,7 @@ dependencies = [
  "pmsig-multisig-core",
  "pmsig-store",
  "risc0-zkvm",
+ "serde_json",
  "thiserror",
 ]
 

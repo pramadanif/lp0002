@@ -86,6 +86,23 @@ who wants to approve several proposals at once.
 - **LEZ** is pinned to `v0.2.4`, established by fingerprinting the testnet's deployed ImageIDs rather
   than by assumption.
 
+## 10a. The composed approval proof does not complete on this laptop
+
+The **standalone** membership proof completes in 53.26 s. The **composed** approval — LEZ's
+privacy-preserving circuit running `env::verify` over two chained programs — did not complete on an
+8-core laptop. It was stopped with r0vm at **~4.4 GB resident** and the system **swapping 7.8 GB of
+9.2 GB**; wall-clock time was dominated by paging, not proving.
+
+Composition needs *succinct* receipts, which means a lift+join for every segment of every inner
+program. That is a different order of cost from the composite receipt the standalone proof produces.
+
+**This matters for criterion P-F5** ("proof generation runs client-side on a standard laptop"). The
+honest position: it holds for the standalone membership proof, and is **unverified for the composed
+approval** on hardware of this size. Finishing it needs materially more RAM or a GPU prover. This is
+a hardware constraint rather than a design fault, but the claim is not made until it is measured.
+
+Evidence: `artifacts/phase-E-ppe-approve-attempt.txt`.
+
 ## 10. Measurement caveats
 
 - **Proving time (53.26 s)** is a single sample, on one 8-core laptop with no GPU. It is not a
@@ -115,11 +132,12 @@ keeps their own authentication path. The on-chain state has no member list at al
 Stated plainly, because the difference between "designed" and "demonstrated" is the whole point of
 this prize's evidence gates:
 
-- **The end-to-end privacy-preserving composition.** The multisig program emits a `ChainedCall` to the
-  membership program, and LEZ's PPE circuit is what proves that call ran. The rules on both sides are
-  unit-tested and the membership guest proves standalone — but a full transaction through the PPE
-  circuit against a running sequencer has **not** been demonstrated. See
-  [phase-E-status.md](phase-E-status.md) for exactly where that stands.
-- **Anything on testnet.** No program is deployed, no transaction exists, and there are no explorer
-  links. `docs/DEPLOYMENT.md` and the on-chain CU figures in [cu-costs.md](cu-costs.md) do not exist
-  yet.
+- **A completed privacy-preserving approval.** The composition is wired end to end and a real
+  transaction reaches the prover — the CLI selects the private path, resolves the membership program
+  as a dependency, and builds a well-formed circuit input. Nothing rejects it. But the proof did not
+  finish on this hardware (§10a), so **no approval has been recorded on chain**. The composition is
+  wired, not demonstrated.
+- **Anything on the public testnet.** Programs are deployed to a *local* standalone sequencer only,
+  and `create_multisig` / `create_proposal` have executed there. There are no public testnet
+  transactions and no explorer links. `docs/DEPLOYMENT.md` and the on-chain CU figures in
+  [cu-costs.md](cu-costs.md) do not exist yet.

@@ -22,6 +22,8 @@ lee_core = { workspace = true, features = ["host"] }
 [dev-dependencies]
 hex.workspace = true
 pmsig-store.workspace = true
+serde_json.workspace = true
+borsh.workspace = true
 
 [lints]
 workspace = true

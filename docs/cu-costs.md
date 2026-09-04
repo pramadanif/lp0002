@@ -48,6 +48,16 @@ the witness is no longer serialised into the committed journal:
 
 Both rows were measured on the same machine with the same settings.
 
+### The composed proof is a different cost, and is not measured
+
+The 53.26 s above is the **standalone** membership proof: a composite receipt, one program.
+
+An approval as actually submitted is a **composition** — LEZ's privacy-preserving circuit calling
+`env::verify` over the multisig program and the chained membership program — which requires succinct
+receipts and therefore recursion. On this 8-core laptop that run did not complete: r0vm reached
+~4.4 GB resident with the system swapping 7.8 GB of 9.2 GB. **No figure is quoted for it, because
+none was obtained** (`docs/limitations.md` §10a).
+
 ### Known measurement anomaly
 
 A *second* proof in the same process did not complete within 25 minutes on two occasions, while the
