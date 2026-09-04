@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04
 **Plan contract:** `docs/plan/planlp0002.md` §5 Phase E
-**Result:** **IN PROGRESS — 4 of 8 SC green. Phase E is NOT complete.**
+**Result:** **IN PROGRESS — 5 of 8 SC green. Phase E is NOT complete, but the composition is now DEMONSTRATED.**
 
 Abort check at phase start: #125 `reviewDecision` empty; merged LP-0002 PRs → 0. Not aborting.
 
@@ -15,7 +15,7 @@ ones prior submissions failed. So the status below is deliberately blunt about w
 | SC | Requirement | State | Evidence |
 |----|-------------|-------|----------|
 | **SC-E.1** | Fresh clone `./demo.sh` → 0 with a standalone sequencer (**H1/W13**, **P-S5**) | ⛔ **not met** | `demo.sh` and `scripts/e2e-local-sequencer.sh` are written and get as far as building the sequencer. The lifecycle step is unimplemented and the script **fails there** rather than reporting a success it has not earned |
-| **SC-E.2** | Log shows `RISC0_DEV_MODE=0` + real prove + sequencer RPC | ◐ partial | **Sequencer RPC demonstrated**: the standalone node builds (0 errors), starts, logs `Starting Sequencer Service RPC server on 0.0.0.0:3040`, and the script reports `sequencer is live — getLastBlockId = 2`. Evidence: `artifacts/phase-E-sequencer-live.txt`. `RISC0_DEV_MODE=0` is set at the entrypoint and echoed. The **real prove inside the e2e run** is not reached yet |
+| **SC-E.2** | Log shows `RISC0_DEV_MODE=0` + real prove + sequencer RPC | ✅ green | All three demonstrated. Sequencer: builds, starts, `RPC server on 0.0.0.0:3040`, `getLastBlockId` read by the script. Real prove: an anonymous approval proved with `RISC0_DEV_MODE=0` in ≈19 min and **confirmed on chain** (tx `f2458791…198fbcb5`). Evidence: `artifacts/phase-E-sequencer-live.txt`, `artifacts/phase-E-ppe-approve-SUCCESS.txt` |
 | **SC-E.3** | `check-dev-mode-clobber.sh` → 0 (**H3**) | ✅ green | Exit 0 over 5 submission-path scripts incl. `demo.sh`. Verified in both directions: injecting `export RISC0_DEV_MODE=1` makes it exit 1 |
 | **SC-E.4** | CI green on `main` including a **push-gated** `e2e-sequencer` job (**H4/W14**) | ⛔ **not met** | Deliberately not wired — see below |
 | **SC-E.5** | No skip / `continue-on-error` on demo/e2e (**H2**) | ✅ green | Neither string appears in `ci.yml`, `demo.sh` or `scripts/`. Every prerequisite in the e2e script is a hard `die`. Preflight PF-03 passes |
@@ -82,12 +82,28 @@ in `docs/VERSIONS.md`, which compared exactly those built-in programs.
    composition is materially more expensive, and no measurement of it exists yet. Nothing in this
    repository should be read as claiming that number is known.
 
-## The honest summary
+## The composition is now demonstrated
 
-Everything up to and including Phase D is demonstrated. The privacy-preserving composition is
-**designed, unit-tested on both sides, and not yet demonstrated end to end**. That distinction is
-exactly what this prize's evidence gates exist to test, so it is recorded here, in
-`docs/limitations.md` §13, and in `docs/TRACKING.md` rather than blurred.
+The privacy-preserving approval works end to end on a live sequencer:
+
+- **tx `f245879141688563e6fad0b54d6e620cb71394bf22a6ed9d6afb2889198fbcb5`**, confirmed in a block
+- approver was a **real shielded account** created by LEZ's own wallet (`Private/Dm4TU2ht…`)
+- `--bin-membership` resolved the `ChainedCall`, so LEZ's PPE circuit ran `env::verify` over **two**
+  chained programs — the composition ADR-001 D2/D4 describes
+- `RISC0_DEV_MODE=0` throughout; ≈19 min, peak 8.74 GB, no swap movement
+- the proposal account on chain now reads: **1 approval, 1 nullifier matching the client's own
+  computation, `executed=false`, and no member identity anywhere**
+
+That last line is P-F1 and P-F2 observable on chain rather than only in a unit test.
+
+## What is still missing for Phase E
+
+`demo.sh` does not yet drive this sequence itself — the lifecycle step in
+`scripts/e2e-local-sequencer.sh` is still unimplemented, so **SC-E.1 and SC-E.4 remain unmet**. The
+steps were run by hand. Turning them into the scripted demo, and only then wiring the CI job, is the
+remaining work.
+
+Also still missing: a second approval to reach full M, and `execute`.
 
 ## Exit
 

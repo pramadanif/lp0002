@@ -86,22 +86,25 @@ who wants to approve several proposals at once.
 - **LEZ** is pinned to `v0.2.4`, established by fingerprinting the testnet's deployed ImageIDs rather
   than by assumption.
 
-## 10a. The composed approval proof does not complete on this laptop
+## 10a. The composed approval proof is expensive, and needs free RAM
 
-The **standalone** membership proof completes in 53.26 s. The **composed** approval — LEZ's
-privacy-preserving circuit running `env::verify` over two chained programs — did not complete on an
-8-core laptop. It was stopped with r0vm at **~4.4 GB resident** and the system **swapping 7.8 GB of
-9.2 GB**; wall-clock time was dominated by paging, not proving.
+The **standalone** membership proof takes 53.26 s. The **composed** approval — LEZ's
+privacy-preserving circuit running `env::verify` over two chained programs — takes **≈19 minutes**
+and peaks at **8.74 GB** on an 8-core laptop with no GPU prover. It completes; it is simply a
+different order of cost, because composition needs *succinct* receipts, i.e. a lift+join for every
+segment of every inner program.
 
-Composition needs *succinct* receipts, which means a lift+join for every segment of every inner
-program. That is a different order of cost from the composite receipt the standalone proof produces.
+**The practical requirement is roughly 9 GB of free RAM**, and that is the part likely to bite an
+evaluator. Our first attempt failed for exactly this reason and it was **not** a hardware limit:
+Chrome (5.8 GB), Cursor (1.7 GB) and VS Code (1.4 GB) were already holding ~9 GB of the 16 GB, so
+the prover was forced into swap and thrashed for hours without finishing. With Chrome and Cursor
+closed, the same proof completed in 19 minutes and swap never moved.
 
-**This matters for criterion P-F5** ("proof generation runs client-side on a standard laptop"). The
-honest position: it holds for the standalone membership proof, and is **unverified for the composed
-approval** on hardware of this size. Finishing it needs materially more RAM or a GPU prover. This is
-a hardware constraint rather than a design fault, but the claim is not made until it is measured.
+So for **P-F5** ("proof generation runs client-side on a standard laptop"): it holds, on a 16 GB
+laptop, *provided ~9 GB is actually free*. A machine that is otherwise loaded will appear to hang.
+The README states this up front so nobody concludes the demo is broken.
 
-Evidence: `artifacts/phase-E-ppe-approve-attempt.txt`.
+Evidence: `artifacts/phase-E-ppe-approve-SUCCESS.txt`.
 
 ## 10. Measurement caveats
 
@@ -132,11 +135,11 @@ keeps their own authentication path. The on-chain state has no member list at al
 Stated plainly, because the difference between "designed" and "demonstrated" is the whole point of
 this prize's evidence gates:
 
-- **A completed privacy-preserving approval.** The composition is wired end to end and a real
-  transaction reaches the prover — the CLI selects the private path, resolves the membership program
-  as a dependency, and builds a well-formed circuit input. Nothing rejects it. But the proof did not
-  finish on this hardware (§10a), so **no approval has been recorded on chain**. The composition is
-  wired, not demonstrated.
+- ~~A completed privacy-preserving approval.~~ **Now demonstrated.** A real anonymous approval was
+  proved with `RISC0_DEV_MODE=0` and confirmed on chain (tx `f2458791…198fbcb5`); the proposal
+  account holds one approval and one nullifier matching the client's computation, with no member
+  identity. What remains undemonstrated is `execute` at full M, which needs a second approval from a
+  second shielded account.
 - **Anything on the public testnet.** Programs are deployed to a *local* standalone sequencer only,
   and `create_multisig` / `create_proposal` have executed there. There are no public testnet
   transactions and no explorer links. `docs/DEPLOYMENT.md` and the on-chain CU figures in

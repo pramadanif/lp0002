@@ -4,7 +4,7 @@
 - Prize source: ../lambda-prize/prizes/LP-0002.md
 - Sibling layout: intentional — easy human eval side-by-side
 - Solution repo absolute path: /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig
-- Current phase: **E (demo.sh + CI e2e)** — IN PROGRESS, 3/8 SC
+- Current phase: **E (demo.sh + CI e2e)** — IN PROGRESS, 5/8 SC; composition demonstrated, demo.sh lifecycle still unimplemented
 - Last green SC: SC-D.1–SC-D.5 (Phase D). Phase E: SC-E.3/E.5/E.7 green; E.1/E.4/E.6 not met
 - Blockers: **Phase E** — the standalone LEZ sequencer build is very large (full blockchain node + C++ groth16 stack); the e2e lifecycle step is unimplemented and fails rather than faking a pass. (#105 eligibility: operator decided 2026-09-04 to proceed through Phase I — `docs/phase-N1-status.md` §3.)
 
@@ -40,9 +40,9 @@
 |------|-----------|------|
 | Reproducible guest build (`build-guests.sh --docker`) | Phase G | `artifacts/IMAGE_IDS.md` currently records a local, non-reproducible build and says so |
 | Second-proof slowdown undiagnosed | Phase H (BUGS_FILED) | `docs/tried-failed.md`; does not affect the recorded 53.26 s |
-| **PPE composition not yet demonstrated end-to-end** | Phase E | Still open. Needs a running sequencer, both programs deployed, and U-6 resolved |
-| U-6: can SPEL's CLI submit the private path? | Phase E | Unresolved. If not, the client must build the PPE transaction itself |
-| Recursive composition cost unmeasured | Phase E | `env::verify` needs succinct receipts; the 53 s figure is a composite proof and does not cover it |
+| ~~PPE composition not demonstrated~~ | — | **DONE.** tx `f2458791…198fbcb5` confirmed; ≈19 min, peak 8.74 GB (`artifacts/phase-E-ppe-approve-SUCCESS.txt`) |
+| ~~U-6~~ | — | **RESOLVED.** It can; `--bin-<NAME>` resolves the ChainedCall dependency |
+| ~~Recursive composition cost unmeasured~~ | — | **MEASURED.** ≈19 min 26 s, peak 8.74 GB, needs ~9 GB free RAM |
 | Verifier change rotates every `config_hash` | Phase H (limitations) | Consequence of ADR-002 |
 
 ## Phase ledger

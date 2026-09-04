@@ -48,22 +48,38 @@ the witness is no longer serialised into the committed journal:
 
 Both rows were measured on the same machine with the same settings.
 
-### The composed proof is a different cost, and is not measured
+### The composed proof — measured
 
-The 53.26 s above is the **standalone** membership proof: a composite receipt, one program.
+The 53.26 s above is the **standalone** membership proof: one program, composite receipt.
 
 An approval as actually submitted is a **composition** — LEZ's privacy-preserving circuit calling
-`env::verify` over the multisig program and the chained membership program — which requires succinct
-receipts and therefore recursion. On this 8-core laptop that run did not complete: r0vm reached
-~4.4 GB resident with the system swapping 7.8 GB of 9.2 GB. **No figure is quoted for it, because
-none was obtained** (`docs/limitations.md` §10a).
+`env::verify` over the multisig program and the chained membership program — which needs succinct
+receipts and therefore recursion. Measured on the same machine:
+
+| Measurement | Value |
+|-------------|-------|
+| Proving time | **≈19 min 26 s** (21:25:01 → 21:44:27) |
+| Peak r0vm resident memory | **8.74 GB** |
+| Free RAM required (practical) | **≈9 GB** |
+| Swap movement | none — stable throughout |
+| Stages observed | 7 (each releases memory on completion) |
+| Host | 8-core laptop, 16 GB, **no GPU prover** |
+| Result | tx `f2458791…198fbcb5`, confirmed in a block |
+
+That is **≈22× the standalone proof**, which is the price of recursion over two inner programs.
+
+**A caveat that matters more than the number:** an earlier attempt at the same proof did not finish
+at all, because ~9 GB of the machine's 16 GB was already held by a browser and two editors. It was
+contention, not capacity. See `docs/limitations.md` §10a.
 
 ### Known measurement anomaly
 
-A *second* proof in the same process did not complete within 25 minutes on two occasions, while the
-first completed in 53 s. Not diagnosed; recorded in `docs/tried-failed.md` rather than smoothed over.
-It does not affect the number above, which is the first proof of a fresh process — the case a member
-actually experiences.
+### Known measurement anomaly
+
+A *second* standalone proof in the same process did not complete within 25 minutes on two occasions,
+while the first completed in 53 s. This was observed **before** we understood the memory picture, and
+is now most likely the same cause: the machine was already loaded, so the second proof swapped. Not
+re-tested. Recorded rather than smoothed over.
 
 ## 2. On-chain compute units (P-P1)
 

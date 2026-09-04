@@ -1,0 +1,50 @@
+# Phase E evidence: APPROVAL ANONIM BERHASIL — jalur privacy-preserving, RISC0_DEV_MODE=0
+captured_utc: 2026-09-04T14:46:51Z
+commit: 0253e92
+
+## Hasil
+  tx_hash : f245879141688563e6fad0b54d6e620cb71394bf22a6ed9d6afb2889198fbcb5
+  status  : Transaction confirmed — included in a block
+  jalur   : privacy-preserving (approver Private/…), BUKAN eksekusi publik
+  mode    : RISC0_DEV_MODE=0 (proof asli, bukan dev-mode receipt)
+
+## Yang membuktikan komposisi berjalan
+  approver  : Private/Dm4TU2htkzxreqTYcdpcuaEgZzA6w2d46grC7Ww4TmNM
+              akun shielded ASLI buatan wallet LEZ sendiri
+  witness   : 1312 byte Borsh — nsk, vpk (1184 B), identifier, Merkle path
+  dependency: --bin-membership (menyelesaikan ChainedCall multisig -> membership)
+  Artinya PPE circuit menjalankan env::verify atas DUA program berantai,
+  persis komposisi yang dijelaskan ADR-001 D2/D4.
+
+## Verifikasi state di chain (getAccount + decode Borsh)
+  proposal PDA : 8puvwsNvMYXpMxRDvncg7SYpLR2G2MUohazUyZNrPu6q
+  version      : 1
+  amount       : 1000
+  JUMLAH APPROVAL : 1
+  nullifier[0] : c67cce3280f7c292adb39f2e490c807f3e085c7842904235487a00b5541587cc
+  executed     : false   (benar: butuh 2 dari 3)
+
+  Nullifier di chain COCOK PERSIS dengan yang dihitung klien.
+  Akun proposal berisi HITUNGAN + NULLIFIER, tanpa identitas anggota apa pun.
+  Inilah P-F1/P-F2 terlihat di chain, bukan sekadar di unit test.
+
+## Biaya terukur (bukan estimasi)
+  durasi proving : ~19 menit 26 detik (21:25:01 -> 21:44:27)
+  puncak RAM r0vm: 8,74 GB
+  swap           : stabil, tidak pernah menyentuh ambang henti
+  mesin          : MacBook 8 core, 16 GB, TANPA GPU prover
+
+  Rincian tahapan (turun tajam = satu tahap proof selesai):
+    21:25:46   6837 -> 3128 MB
+    21:27:02   7143 -> 3375 MB
+    21:29:18   7982 -> 2767 MB
+    21:33:06   8613 -> 3978 MB
+    21:39:09   7444 -> 2699 MB
+    21:41:11   5217 -> 2388 MB
+    21:44:27   2421 -> 2 MB
+
+## Syarat menjalankan ulang
+  Butuh ~9 GB RAM BEBAS. Percobaan pertama GAGAL bukan karena mesin kurang,
+  melainkan karena Chrome (5,8 GB) + Cursor (1,7 GB) + VS Code (1,4 GB) sudah
+  memakai ~9 GB, sehingga prover terpaksa swap dan thrashing berjam-jam.
+  Setelah Chrome dan Cursor ditutup, proof selesai dalam 19 menit tanpa swap.
