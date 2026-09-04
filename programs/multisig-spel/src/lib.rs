@@ -134,6 +134,7 @@ mod private_multisig {
         proposal_seed: [u8; 32],
         member_root: [u8; 32],
         claimed_nullifier: [u8; 32],
+        witness: Vec<u8>,
     ) -> SpelResult {
         let state = decode_config(&config)?;
         let mut proposal_state = decode_proposal(&proposal)?;
@@ -153,10 +154,19 @@ mod private_multisig {
 
         // The chained call whose ProgramOutput `env::verify` must cover. The membership guest reads
         // its private witness separately; only the public claim travels in instruction data.
+        // The membership witness is Borsh-encoded by the client and forwarded verbatim. It is
+        // secret, and it necessarily rides in instruction_data because LEZ gives a program no
+        // private input channel — see pmsig_membership_core's module docs.
+        let witness: pmsig_membership_core::ApprovalWitness =
+            borsh::from_slice(&witness).map_err(|_| {
+                err(pmsig_multisig_core::MultisigError::InvalidProof)
+            })?;
         let call = ChainedCall::new(
             verifier,
             vec![approver.clone()],
-            &pmsig_membership_core::Instruction::VerifyApproval(claim),
+            &pmsig_membership_core::Instruction::VerifyApproval(Box::new(
+                pmsig_membership_core::VerifyApprovalArgs { claim, witness },
+            )),
         );
 
         let proposal = with_data(&proposal, &proposal_state)?;

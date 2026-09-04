@@ -17,7 +17,7 @@ use lee_core::{
     account::AccountWithMetadata,
     program::{InstructionData, ProgramId},
 };
-use pmsig_membership_core::{ApprovalClaim, ApprovalWitness, Instruction};
+use pmsig_membership_core::{ApprovalClaim, ApprovalWitness, Instruction, VerifyApprovalArgs};
 use risc0_zkvm::{compute_image_id, default_prover, ExecutorEnv, ProverOpts, Receipt};
 
 use crate::SdkError;
@@ -65,7 +65,10 @@ fn build_env<'a>(
     claim: &'a ApprovalClaim,
     witness: &'a ApprovalWitness,
 ) -> Result<ExecutorEnv<'a>, SdkError> {
-    let instruction = Instruction::VerifyApproval(claim.clone());
+    let instruction = Instruction::VerifyApproval(Box::new(VerifyApprovalArgs {
+        claim: claim.clone(),
+        witness: witness.clone(),
+    }));
     let instruction_words: InstructionData = risc0_zkvm::serde::to_vec(&instruction)
         .map_err(|e| SdkError::ProofGenerationFailed(format!("encoding instruction: {e}")))?;
 
@@ -73,10 +76,9 @@ fn build_env<'a>(
         .write(&self_program_id)
         .and_then(|b| b.write(&caller_program_id))
         .and_then(|b| b.write(&pre_states.to_vec()))
+        // Exactly the four inputs LEZ writes, in LEZ's order. There is no fifth: a guest has no
+        // private channel, which is why the witness rides inside instruction_data.
         .and_then(|b| b.write(&instruction_words))
-        // The witness is written AFTER the standard LEZ inputs and is never echoed into
-        // ProgramOutput, so it stays out of the journal. See pmsig_membership_core's module docs.
-        .and_then(|b| b.write(witness))
         .map_err(|e| SdkError::ProofGenerationFailed(format!("building executor env: {e}")))?
         .build()
         .map_err(|e| SdkError::ProofGenerationFailed(format!("building executor env: {e}")))

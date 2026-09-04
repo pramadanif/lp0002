@@ -8,19 +8,20 @@
 //! and answers by panicking if not. A panic means no valid `ProgramOutput`, so `env::verify` fails
 //! and the transaction is invalid.
 //!
-//! # What is committed, and what is not
+//! # What ends up in the journal
 //!
-//! `ProgramOutput` is written to the journal, and it echoes `instruction_data`. So the instruction
-//! carries only [`ApprovalClaim`] — values already public on chain. The member's secrets arrive as a
-//! **separate private input**, read after the standard LEZ inputs and never committed.
+//! `ProgramOutput` is written to the journal and echoes `instruction_data`, so the witness — the
+//! member's `nsk` included — is in this guest's journal. That is unavoidable: LEZ writes exactly
+//! four inputs to a program and offers no private channel
+//! (`lee/state_machine/src/program/mod.rs::write_inputs`).
 //!
-//! This split is load-bearing and was arrived at by measurement: with the witness in
-//! `instruction_data`, decoding the journal recovered the member's `nsk` verbatim. The
-//! `journal_privacy` test in `crates/sdk/tests/` asserts it stays out.
+//! It is safe only because this journal never reaches the chain. LEZ's privacy-preserving circuit
+//! consumes it via `env::verify` and commits `PrivacyPreservingCircuitOutput`, which carries just
+//! nullifiers, commitments and ciphertext. **An inner receipt is prover-local secret material** —
+//! see `docs/security.md` §3b.
 
 use lee_core::program::{read_lee_inputs, AccountPostState, ProgramInput, ProgramOutput};
-use pmsig_membership_core::{verify_approval, ApprovalWitness, Instruction};
-use risc0_zkvm::guest::env;
+use pmsig_membership_core::{verify_approval, Instruction};
 
 fn main() {
     let (
@@ -33,10 +34,8 @@ fn main() {
         instruction_words,
     ) = read_lee_inputs::<Instruction>();
 
-    let Instruction::VerifyApproval(claim) = instruction;
-
-    // The secret half, read as a private input. Never echoed into ProgramOutput.
-    let witness: ApprovalWitness = env::read();
+    let Instruction::VerifyApproval(args) = instruction;
+    let (claim, witness) = (&args.claim, &args.witness);
 
     // The approver's shielded account. LEZ's PPE circuit has already bound this account id to a
     // live, unspent commitment; `verify_approval` ties the witness to it.
@@ -44,7 +43,7 @@ fn main() {
         panic!("membership: expected the approver account as pre_states[0]");
     };
 
-    verify_approval(&claim, &witness, &approver.account_id);
+    verify_approval(claim, witness, &approver.account_id);
 
     // This program owns no state and mutates nothing: every pre-state is echoed unchanged.
     let post_states = pre_states

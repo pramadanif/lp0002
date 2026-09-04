@@ -167,3 +167,44 @@ member secret — does not depend on proving. A journal is determined by what th
 byte-identical whether the session is executed or proved. `the_journal_carries_no_member_secret`
 asserts it by execution, decoding the journal, and runs in CI in under a second. The proved variant is
 kept, `#[ignore]`d, as a belt-and-braces check for when the slowdown is understood.
+
+## Phase E
+
+### A guest cannot take a private input on LEZ — the Phase B "fix" was unimplementable
+
+**Shipped in Phase B, and wrong.** Phase B found the member's `nsk` in the membership guest's
+journal, because the witness was in `instruction_data` and LEZ echoes that into the committed
+`ProgramOutput`. The fix was to move the witness to a *separate private input*, read with
+`env::read()` after the standard LEZ inputs. Tests passed. The journal was clean.
+
+**It fails on a real chain.** The first genuine transaction to reach the guest died with:
+
+```
+panicked at risc0-zkvm/src/guest/env/read.rs:78:
+  called `Result::unwrap()` on an `Err` value: DeserializeUnexpectedEnd
+❌ Failed to submit privacy-preserving transaction:
+   ProgramProveFailed("Guest panicked: ... DeserializeUnexpectedEnd")
+```
+
+The cause is not the tooling. `lee/state_machine/src/program/mod.rs::write_inputs` writes **exactly
+four** values to every program — `program_id`, `caller_program_id`, `pre_states`,
+`instruction_data` — and there is no fifth and no extension point. Nothing in LEZ will ever write a
+private input, so a guest that reads one can never run.
+
+**Why the tests did not catch it.** They drove the guest through a harness we control
+(`ExecutorEnv` built by our own SDK), which happily wrote a fifth input. The harness was more
+permissive than the runtime. A test that only ever exercises your own harness proves your harness
+works.
+
+**The correction.** The witness travels in `instruction_data`, as it originally did, and the honest
+consequence is stated rather than engineered away: **the inner guest journal contains the member's
+`nsk`**. That is safe only because the inner journal never reaches the chain — LEZ's
+privacy-preserving circuit consumes it via `env::verify` and commits only
+`PrivacyPreservingCircuitOutput` (nullifiers, commitments, ciphertext). An inner receipt is
+prover-local secret material and must be treated like a private key at rest
+(`docs/security.md` §3b, `docs/limitations.md` §7).
+
+**SC-B.4 was therefore unachievable as literally worded** ("journal has no npk / member id
+plaintext") for a guest's own journal on LEZ. The test now asserts what is true and load-bearing —
+the witness *is* in the inner journal, and the chain-facing output is what carries no identity —
+rather than asserting a property the platform cannot provide.

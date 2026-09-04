@@ -1,18 +1,30 @@
 //! Types exchanged with the membership program.
 //!
-//! Split deliberately into two halves, because they have **different privacy fates**:
+//! Split into a public [`ApprovalClaim`] and a secret [`ApprovalWitness`], carried together in the
+//! instruction.
 //!
-//! - [`ApprovalClaim`] is the program's `instruction_data`. LEZ programs echo `instruction_data`
-//!   into their `ProgramOutput`, which is **committed to the guest's journal**, so nothing secret
-//!   may live here. Everything in the claim is already public on chain.
-//! - [`ApprovalWitness`] is read as an extra private input and is **never committed**. This is where
-//!   the member's secrets go.
+//! # Why both travel in `instruction_data`, and what that costs
 //!
-//! Phase B measured this rather than assuming it. An earlier version carried the whole witness in
-//! `instruction_data`; decoding the journal showed the member's `nsk` could be read straight back
-//! out (`docs/tried-failed.md`). On-chain privacy would still have held — only
-//! `PrivacyPreservingCircuitOutput` reaches the chain — but the inner receipt would have been a
-//! spending key in a file, which is a far worse failure than an identity leak.
+//! LEZ hands every program exactly four inputs — `program_id`, `caller_program_id`, `pre_states`
+//! and `instruction_data` — and there is no fifth
+//! (`lee/state_machine/src/program/mod.rs::write_inputs`). A program therefore has **no private
+//! channel**: any secret it needs must arrive in `instruction_data`, which LEZ echoes into the
+//! `ProgramOutput` it commits to the guest's journal.
+//!
+//! Phase E established this the hard way. An earlier design read the witness as a separate
+//! `env::read()` after the standard inputs, to keep it out of the journal; that works in a bespoke
+//! harness and **fails on LEZ**, because nothing in the runtime ever writes a fifth input. The guest
+//! aborted with `DeserializeUnexpectedEnd` the first time a real transaction reached it.
+//! `docs/tried-failed.md` records the whole arc.
+//!
+//! So the honest position is: **the inner journal contains the member's `nsk`**, and that journal is
+//! prover-local material which never reaches the chain — only `PrivacyPreservingCircuitOutput` does,
+//! and it carries just nullifiers, commitments and ciphertext
+//! (`lee/state_machine/core/src/circuit_io.rs:156-180`). An inner receipt must be treated like a
+//! private key at rest; see `docs/security.md` §3b.
+//!
+//! The split is kept because it still documents which half is *conceptually* public — the claim is
+//! exactly what the multisig program records on chain — even though both now share one channel.
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use lee_core::encryption::ViewingPublicKey;
@@ -44,9 +56,11 @@ pub struct ApprovalClaim {
     pub claimed_nullifier: Digest32,
 }
 
-/// The **secret** half: never committed, never persisted, never transmitted.
+/// The **secret** half.
 ///
-/// Read by the guest as a private input after the standard LEZ inputs.
+/// Travels in `instruction_data` because LEZ offers no other channel (see the module docs), and is
+/// therefore present in the guest's inner journal. Never persisted or transmitted outside the
+/// proving process.
 #[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub struct ApprovalWitness {
     /// The member's nullifier secret key.
@@ -64,9 +78,16 @@ pub struct ApprovalWitness {
     pub siblings: Vec<Digest32>,
 }
 
+/// What the membership program is asked to verify: the public claim and the secret witness.
+#[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
+pub struct VerifyApprovalArgs {
+    pub claim: ApprovalClaim,
+    pub witness: ApprovalWitness,
+}
+
 /// The instruction enum of the membership program.
 #[derive(Debug, Clone, PartialEq, Eq, BorshSerialize, BorshDeserialize, Serialize, Deserialize)]
 pub enum Instruction {
-    /// Verify a membership claim against the private witness supplied alongside it.
-    VerifyApproval(ApprovalClaim),
+    /// Verify a membership claim against its witness.
+    VerifyApproval(Box<VerifyApprovalArgs>),
 }

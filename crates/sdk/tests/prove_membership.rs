@@ -112,10 +112,10 @@ fn an_honest_approval_proves_and_verifies() {
     println!("JOURNAL_BYTES={}", proof.receipt.journal.bytes.len());
 }
 
-/// The proved receipt's journal must satisfy the same rule as the executed one.
+/// The proved receipt's journal is byte-identical to the executed one.
 #[test]
 #[ignore = "generates a real proof; run via scripts/prove-bench.sh"]
-fn the_proved_journal_carries_no_member_secret() {
+fn the_proved_journal_matches_the_executed_one() {
     let (claim, witness, pre_states) = alice_approves();
     let binary = program_binary();
     let proof = prove_approval(
@@ -129,16 +129,18 @@ fn the_proved_journal_carries_no_member_secret() {
     )
     .expect("honest approval must prove");
 
-    let journal = &proof.receipt.journal.bytes;
-    let npk = npk_of(&ALICE_NSK).to_byte_array();
-
-    assert!(
-        !contains(journal, &word_encode(&witness.nsk)),
-        "SC-B.4: the member's nsk appears in the proved journal"
-    );
-    assert!(
-        !contains(journal, &word_encode(&npk)),
-        "SC-B.4: the member's npk appears in the proved journal"
+    let (_cycles, executed) = execute_approval_journal(
+        &binary,
+        SELF_PROGRAM_ID,
+        None,
+        &pre_states,
+        &claim,
+        &witness,
+    )
+    .expect("executes");
+    assert_eq!(
+        proof.receipt.journal.bytes, executed,
+        "proving must not change what the guest commits"
     );
 }
 
@@ -279,17 +281,24 @@ mod negatives {
     }
 }
 
-/// **SC-B.4** — the member's secrets must not reach the guest's journal.
+/// **SC-B.4, corrected.** What the inner guest journal actually contains, asserted rather than hoped.
 ///
-/// Checked by decoding the journal, not by scanning it. A raw byte scan is a **false negative**
-/// here: risc0's serde writes each `u8` as its own 32-bit word, so a 32-byte secret occupies 128
-/// journal bytes and never appears as a contiguous run. An earlier version of this test scanned raw
-/// bytes, reported "clean", and was wrong — the witness was fully recoverable. See
-/// `docs/tried-failed.md`.
+/// The original reading of SC-B.4 — "the journal has no npk or member id in plaintext" — **cannot be
+/// satisfied on LEZ for a guest's own journal**, and Phase E proved it by running a real
+/// transaction. LEZ writes a program exactly four inputs and offers no private channel
+/// (`lee/state_machine/src/program/mod.rs::write_inputs`), so any secret a program needs arrives in
+/// `instruction_data`, which LEZ echoes into the committed `ProgramOutput`.
 ///
-/// Executed rather than proved: the journal is identical either way, and this needs to run in CI.
+/// An earlier design read the witness as a fifth, private input. It passed this test, and it failed
+/// the moment a real transaction reached it (`DeserializeUnexpectedEnd`), because nothing in LEZ
+/// ever writes a fifth input. See `docs/tried-failed.md`.
+///
+/// So this test now asserts the property that is actually true and actually load-bearing: the
+/// witness **is** in the inner journal, and that journal is prover-local material which never
+/// reaches the chain. The chain-facing privacy claim is asserted separately, against
+/// `PrivacyPreservingCircuitOutput`.
 #[test]
-fn the_journal_carries_no_member_secret() {
+fn the_inner_journal_contains_the_witness_and_must_be_treated_as_secret() {
     let (claim, witness, pre_states) = alice_approves();
     let (_cycles, journal) = execute_approval_journal(
         &program_binary(),
@@ -301,51 +310,30 @@ fn the_journal_carries_no_member_secret() {
     )
     .expect("honest approval executes");
 
-    let npk = npk_of(&ALICE_NSK).to_byte_array();
-
-    // Word-encoded scan: the form the secrets would actually take if committed.
-    assert!(
-        !contains(&journal, &word_encode(&witness.nsk)),
-        "SC-B.4: the member's nsk is in the guest journal"
-    );
-    assert!(
-        !contains(&journal, &word_encode(&npk)),
-        "SC-B.4: the member's npk is in the guest journal"
-    );
-    assert!(
-        !contains(&journal, &word_encode(witness.vpk.to_bytes())),
-        "SC-B.4: the member's viewing key is in the guest journal"
-    );
-    for sibling in &witness.siblings {
-        assert!(
-            !contains(&journal, &word_encode(sibling)),
-            "SC-B.4: a Merkle sibling is in the guest journal"
-        );
-    }
-
-    // Decode it properly: instruction_data must be the public claim and nothing more.
     let output: lee_core::program::ProgramOutput =
         risc0_zkvm::serde::from_slice(&journal).expect("journal decodes as ProgramOutput");
     let recovered: pmsig_membership_core::Instruction =
         risc0_zkvm::serde::from_slice(&output.instruction_data)
             .expect("instruction_data decodes as our Instruction");
-    let pmsig_membership_core::Instruction::VerifyApproval(recovered_claim) = recovered;
+    let pmsig_membership_core::Instruction::VerifyApproval(args) = recovered;
+
+    // The claim round-trips, as the multisig program relies on.
+    assert_eq!(args.claim, claim);
+
+    // And so does the witness. This is NOT a leak to the chain — it is why an inner receipt is
+    // secret material. If this assertion ever fails, the design has changed and
+    // docs/security.md §3b must change with it.
     assert_eq!(
-        recovered_claim, claim,
-        "the committed instruction must be exactly the public claim"
+        args.witness.nsk, witness.nsk,
+        "the witness rides in instruction_data; docs/security.md §3b depends on knowing that"
+    );
+    assert!(
+        contains(&journal, &word_encode(&witness.nsk)),
+        "the nsk is expected in the INNER journal — the chain never sees this journal"
     );
 }
 
-/// What the journal *does* contain, asserted so the docs cannot drift from reality.
-///
-/// The approver's `account_id` is in `pre_states`, and that is unavoidable: every LEZ program
-/// commits its pre/post states, which is how the runtime validates execution. It is not a leak of
-/// this design — the inner `ProgramOutput` never reaches the chain. Only
-/// `PrivacyPreservingCircuitOutput` does, and that carries just nullifiers, commitments and
-/// ciphertext (`lee/state_machine/core/src/circuit_io.rs:156-180`).
-///
-/// The consequence, recorded in `docs/security.md`: **the inner receipt is prover-local material**.
-/// The SDK must never persist or transmit it.
+/// The approver's `account_id` is in `pre_states`, which every LEZ program commits.
 #[test]
 fn the_journal_does_contain_the_approver_account_id() {
     let (claim, witness, pre_states) = alice_approves();
@@ -362,10 +350,7 @@ fn the_journal_does_contain_the_approver_account_id() {
     let output: lee_core::program::ProgramOutput =
         risc0_zkvm::serde::from_slice(&journal).expect("journal decodes as ProgramOutput");
     let account_id = derive_account_id(&npk_of(&ALICE_NSK), &vpk(), 0);
-    assert_eq!(
-        output.pre_states[0].account_id, account_id,
-        "pre_states carry the approver account id — inherent to LEZ, and why inner receipts are secret"
-    );
+    assert_eq!(output.pre_states[0].account_id, account_id);
 }
 
 /// How risc0's serde lays a byte slice into the journal: one 32-bit little-endian word per byte.
