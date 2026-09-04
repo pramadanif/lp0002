@@ -117,16 +117,23 @@ else
   else bad "PF-07" "criteria-checklist missing:$missing"; fi
 fi
 
-# PF-08 — CU costs must be numeric, never "unavailable"
+# PF-08 — on-chain CU costs must be numeric, never "unavailable"
+#
+# Looks for the per-instruction CU table specifically, not just any digits in the file: the client
+# proving benchmarks land in the same document in Phase B and would otherwise satisfy a naive check
+# while the actual criterion (P-P1, on-chain CU) was still unmeasured.
 CU=docs/cu-costs.md
+cu_row_re='^\|[[:space:]]*`?(create_multisig|create_proposal|approve|execute)`?[[:space:]]*\|'
 if [[ ! -s $CU ]]; then
   pend "PF-08" "docs/cu-costs.md not written yet (Phase G)"
-elif grep -qiE 'unavailable|n/?a\b|tbd' "$CU"; then
-  bad "PF-08" "cu-costs.md still says unavailable/TBD"
-elif ! grep -qE '[0-9]+' "$CU"; then
-  bad "PF-08" "cu-costs.md has no numeric CU values"
+elif ! grep -qE "$cu_row_re" "$CU"; then
+  pend "PF-08" "cu-costs.md has no per-instruction on-chain CU table yet (Phase G)"
+elif grep -E "$cu_row_re" "$CU" | grep -qiE 'unavailable|n/?a|tbd'; then
+  bad "PF-08" "the on-chain CU table still says unavailable/TBD"
+elif ! grep -E "$cu_row_re" "$CU" | grep -qE '[0-9]'; then
+  bad "PF-08" "the on-chain CU table has no numeric values"
 else
-  ok "PF-08" "cu-costs.md has numeric CU values and no 'unavailable'"
+  ok "PF-08" "cu-costs.md has numeric on-chain CU per instruction"
 fi
 
 # PF-09 — deployment evidence + live explorer links

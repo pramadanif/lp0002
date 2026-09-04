@@ -8,6 +8,13 @@
 pub const STORE_FILENAME: &str = "approvals.json";
 
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    reason = "test code: panicking is how a test reports failure"
+)]
 mod tests {
     use super::*;
 

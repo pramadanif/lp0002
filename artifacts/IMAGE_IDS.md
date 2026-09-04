@@ -9,14 +9,14 @@ are what must appear in `getProgramIds` once deployed.
 |-------|-------|
 | Program | `membership` (`programs/membership-lez`) |
 | Build | local toolchain — NOT reproducible, do not deploy or quote in a submission |
-| ImageID | `2868eba729f0a7f31c824116a539baeb27f940b2be6889549c74d325d683047a` |
-| ProgramId (u32×8) | `[2817222696, 4087869481, 373391900, 3954850213, 2990602535, 1418291390, 634614940, 2047116246]` |
+| ImageID | `821c23d90f97d5daff92b91bfbb219c3be07ec08b1b5e6cc3a65712461f460ff` |
+| ProgramId (u32×8) | `[3642956930, 3671430927, 465146623, 3273241339, 149686206, 3437671857, 611411258, 4284544097]` |
 | Binary | `artifacts/membership.bin` |
-| Binary size | 372312 bytes |
-| SHA-256 | `536a0cb7e01c520fc06bbd4569e316f28d66e1cbcf767a309387cc6c0c28253f` |
-| Built | 2026-09-04T12:01:34Z |
-| Commit | `ec9534a` |
-| risc0 | risc0-r0vm 3.0.5 |
+| Binary size | 377084 bytes |
+| SHA-256 | `01043ffab98e34f653690a4295ff72a63d5b99dd8e183da3bb4c0d7be7f57411` |
+| Built | 2026-09-04T12:17:38Z |
+| Commit | `ff634a2` |
+| risc0 | risc0-r0vm 3.0.6 |
 | LEZ | v0.2.4 (see docs/VERSIONS.md) |
 
 ## Reproducing

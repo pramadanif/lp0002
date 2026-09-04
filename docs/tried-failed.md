@@ -102,3 +102,68 @@ account, the witness names a member key, and nothing connects them.
 The fix did not change; the justification did. `SC-B.5` now tests the property that is actually at
 stake — a witness that does not control the presented account is accepted by a derivation-only variant
 and rejected by the real one.
+
+## Phase B
+
+### The guest journal was leaking the member's spending key
+
+**Shipped, briefly.** The first working membership guest took the whole witness — `nsk`, `vpk`,
+`identifier`, Merkle path — as its instruction argument, the obvious shape for a program that has to
+verify all of it.
+
+**Why that is bad.** A LEZ program echoes its `instruction_data` into the `ProgramOutput` it writes,
+and `ProgramOutput::write()` **commits to the guest's journal**. So the journal contained the
+member's `nsk` verbatim.
+
+On-chain privacy would have survived: the inner `ProgramOutput` never reaches the chain, because
+LEZ's privacy-preserving circuit consumes it via `env::verify` and commits only
+`PrivacyPreservingCircuitOutput`. But the inner receipt would have been a **spending key sitting in a
+file** — a worse failure than the identity leak the prize is about, and one that any SDK caching or
+debug dump would have turned into key loss.
+
+**How it was nearly missed.** The first version of the SC-B.4 test scanned the journal for the raw
+32 bytes of `nsk` and reported it clean. That scan is a **false negative**: risc0's serde writes each
+`u8` as its own 32-bit word, so a 32-byte secret occupies 128 journal bytes and never appears as a
+contiguous run. Decoding the journal properly showed the witness could be read straight back out:
+
+```
+raw_nsk=false            <- what the naive scan saw
+word_nsk=true            <- the same secret, word-encoded
+witness_recoverable_from_journal=true
+```
+
+**Fix.** The instruction was split. `ApprovalClaim` — `multisig_id`, `proposal_id`, `member_root`,
+`claimed_nullifier`, all already public on chain — stays in `instruction_data`. `ApprovalWitness`
+moved to a **separate private input**, read with `env::read()` after the standard LEZ inputs and
+never echoed into `ProgramOutput`. The chained-call check that the caller's `instruction_data`
+matches the callee's still holds, because both sides carry the claim.
+
+`the_journal_carries_no_member_secret` now decodes the journal instead of scanning it, and asserts
+the recovered instruction is exactly the public claim.
+
+**What remains in the journal, by necessity:** the approver's `account_id`, in `pre_states`. Every
+LEZ program commits its pre/post states — that is how the runtime validates execution — so this is
+not removable and is not specific to this design. It is why `docs/security.md` records that **inner
+receipts are prover-local secret material** that the SDK never persists or transmits.
+
+### A second proof in the same process does not finish in reasonable time
+
+**Observed, not explained.** `scripts/prove-bench.sh` runs two proving tests sequentially with
+`--test-threads=1`. The first completes reliably — 123.9 s before the witness split, 53.3 s after.
+The **second** proof in the same process ran for over 25 minutes on two separate occasions without
+completing, at ~740% CPU in `r0vm` throughout, for a guest of only 598 k cycles.
+
+**What is known:** the guest is small; the first proof of an identical workload takes under a minute;
+`ProverOpts::default()` is `ReceiptKind::Composite`, so this is not recursion. Version skew was ruled
+out — r0vm was aligned to 3.0.6 and the behaviour persisted.
+
+**Not diagnosed.** Plausible candidates are r0vm session/process reuse across successive
+`prove_with_opts` calls, or host memory pressure on an 8-core laptop. Recorded here rather than
+guessed at, and it will be filed upstream if it reproduces on a clean machine
+(`docs/BUGS_FILED.md`).
+
+**Why it does not block Phase B.** The property the second test asserts — that the journal carries no
+member secret — does not depend on proving. A journal is determined by what the guest commits, and is
+byte-identical whether the session is executed or proved. `the_journal_carries_no_member_secret`
+asserts it by execution, decoding the journal, and runs in CI in under a second. The proved variant is
+kept, `#[ignore]`d, as a belt-and-braces check for when the slowdown is understood.

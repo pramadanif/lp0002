@@ -71,6 +71,30 @@ Listing these is the point of the section; `docs/limitations.md` carries the ful
    That is inherent to threshold visibility, not a defect.
 5. **Proposal content.** Explicitly out of scope — the prize hides identity and vote, not the action.
 
+## 3b. The inner receipt is secret material
+
+Approvals are proved in two layers: our membership guest produces a `ProgramOutput`, and LEZ's
+privacy-preserving circuit verifies it with `env::verify` and commits only
+`PrivacyPreservingCircuitOutput`. **Only the outer journal reaches the chain**, and it carries just
+nullifiers, commitments, ciphertext and public-account states (`circuit_io.rs:156-180`).
+
+The inner `ProgramOutput` is different. Every LEZ program commits its `pre_states`, which is how the
+runtime validates execution — so the inner journal contains **the approver's `account_id` in the
+clear**. That is inherent to LEZ, not to this design.
+
+Two consequences, both enforced rather than assumed:
+
+1. **The member's secrets are kept out of the inner journal.** The guest's instruction carries only
+   the public `ApprovalClaim`; `nsk`, `vpk`, `identifier` and the Merkle path arrive as a separate
+   private input that is never committed. This was a bug once — the witness was in `instruction_data`
+   and the `nsk` was fully recoverable from the journal (`docs/tried-failed.md`). The test
+   `the_journal_carries_no_member_secret` decodes the journal and asserts it.
+2. **Inner receipts are never persisted or transmitted.** They identify the approver's account. The
+   SDK holds them only in memory, for exactly as long as it takes to build the outer proof.
+
+An adversary who obtains an inner receipt learns which account approved — not the member's key, but
+enough to break anonymity for that approval. Treat it like a private key at rest.
+
 ## 4. Trust and cryptographic assumptions
 
 | Assumption | Rests on |

@@ -17,7 +17,7 @@ use lee_core::{
     account::AccountWithMetadata,
     program::{InstructionData, ProgramId},
 };
-use pmsig_membership_core::{ApproveWitness, Instruction};
+use pmsig_membership_core::{ApprovalClaim, ApprovalWitness, Instruction};
 use risc0_zkvm::{compute_image_id, default_prover, ExecutorEnv, ProverOpts, Receipt};
 
 use crate::SdkError;
@@ -52,9 +52,10 @@ fn build_env<'a>(
     self_program_id: ProgramId,
     caller_program_id: Option<ProgramId>,
     pre_states: &'a [AccountWithMetadata],
-    witness: &'a ApproveWitness,
+    claim: &'a ApprovalClaim,
+    witness: &'a ApprovalWitness,
 ) -> Result<ExecutorEnv<'a>, SdkError> {
-    let instruction = Instruction::VerifyApproval(Box::new(witness.clone()));
+    let instruction = Instruction::VerifyApproval(claim.clone());
     let instruction_words: InstructionData = risc0_zkvm::serde::to_vec(&instruction)
         .map_err(|e| SdkError::ProofGenerationFailed(format!("encoding instruction: {e}")))?;
 
@@ -63,6 +64,9 @@ fn build_env<'a>(
         .and_then(|b| b.write(&caller_program_id))
         .and_then(|b| b.write(&pre_states.to_vec()))
         .and_then(|b| b.write(&instruction_words))
+        // The witness is written AFTER the standard LEZ inputs and is never echoed into
+        // ProgramOutput, so it stays out of the journal. See pmsig_membership_core's module docs.
+        .and_then(|b| b.write(witness))
         .map_err(|e| SdkError::ProofGenerationFailed(format!("building executor env: {e}")))?
         .build()
         .map_err(|e| SdkError::ProofGenerationFailed(format!("building executor env: {e}")))
@@ -83,7 +87,8 @@ pub fn prove_approval(
     self_program_id: ProgramId,
     caller_program_id: Option<ProgramId>,
     pre_states: &[AccountWithMetadata],
-    witness: &ApproveWitness,
+    claim: &ApprovalClaim,
+    witness: &ApprovalWitness,
     allow_dev_mode: bool,
 ) -> Result<ApprovalProof, SdkError> {
     if dev_mode_enabled() && !allow_dev_mode {
@@ -97,7 +102,13 @@ pub fn prove_approval(
         .try_into()
         .map_err(|_| SdkError::ProofGenerationFailed("image id must be 8 words".into()))?;
 
-    let env = build_env(self_program_id, caller_program_id, pre_states, witness)?;
+    let env = build_env(
+        self_program_id,
+        caller_program_id,
+        pre_states,
+        claim,
+        witness,
+    )?;
 
     let started = Instant::now();
     let receipt = default_prover()
@@ -127,11 +138,44 @@ pub fn execute_approval(
     self_program_id: ProgramId,
     caller_program_id: Option<ProgramId>,
     pre_states: &[AccountWithMetadata],
-    witness: &ApproveWitness,
+    claim: &ApprovalClaim,
+    witness: &ApprovalWitness,
 ) -> Result<u64, SdkError> {
-    let env = build_env(self_program_id, caller_program_id, pre_states, witness)?;
+    let env = build_env(
+        self_program_id,
+        caller_program_id,
+        pre_states,
+        claim,
+        witness,
+    )?;
     let session = risc0_zkvm::default_executor()
         .execute(env, program_binary)
         .map_err(|e| SdkError::ProofGenerationFailed(e.to_string()))?;
     Ok(session.cycles())
+}
+
+/// Runs the guest and returns `(cycles, journal_bytes)`.
+///
+/// Used to inspect what the guest commits without paying for a proof. The journal is identical
+/// whether the session is proved or merely executed.
+pub fn execute_approval_journal(
+    program_binary: &[u8],
+    self_program_id: ProgramId,
+    caller_program_id: Option<ProgramId>,
+    pre_states: &[AccountWithMetadata],
+    claim: &ApprovalClaim,
+    witness: &ApprovalWitness,
+) -> Result<(u64, Vec<u8>), SdkError> {
+    let env = build_env(
+        self_program_id,
+        caller_program_id,
+        pre_states,
+        claim,
+        witness,
+    )?;
+    let session = risc0_zkvm::default_executor()
+        .execute(env, program_binary)
+        .map_err(|e| SdkError::ProofGenerationFailed(e.to_string()))?;
+    let journal = session.journal.bytes.clone();
+    Ok((session.cycles(), journal))
 }

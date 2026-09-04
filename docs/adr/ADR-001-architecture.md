@@ -163,6 +163,14 @@ the membership witnesses (`nsk`, `vpk`, `identifier`, `merkle_path`) do not appe
 What *is* public: the proposal's approval count, the approval nullifier set, and the proposed action.
 Hiding the proposal's content is explicitly out of scope for this prize.
 
+**The inner journal is not a free space, though.** A LEZ program echoes `instruction_data` into the
+`ProgramOutput` it commits, so anything in the instruction lands in the guest's journal. The
+membership instruction therefore carries only the public `ApprovalClaim` (`multisig_id`,
+`proposal_id`, `member_root`, `claimed_nullifier`); the secrets travel as a **separate private
+input** that is never committed. The inner journal still contains the approver's `account_id` via
+`pre_states` — unavoidable, since that is how LEZ validates execution — which is why inner receipts
+are treated as prover-local secret material (`docs/security.md` §3b).
+
 ### D8 — Reference action: treasury transfer, default 2-of-3, evidenced at full M
 
 The reference integration is a treasury transfer gated on M approvals. Default configuration is

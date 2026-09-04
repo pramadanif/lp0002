@@ -1,3 +1,11 @@
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::indexing_slicing,
+    reason = "test code: panicking is how a test reports failure"
+)]
+
 //! SC-B.7 — byte-compatibility with LEZ's own account derivation.
 //!
 //! The values asserted here are **LEZ's**, lifted from the `#[test]` blocks upstream pins in
