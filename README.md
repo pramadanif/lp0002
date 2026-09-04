@@ -73,7 +73,7 @@ Each phase has a status document recording the exact commands run, their exit co
 | B | Membership + nullifier guest, one real `RISC0_DEV_MODE=0` proof | ✅ [`docs/phase-B-status.md`](docs/phase-B-status.md) |
 | C | SPEL program: create / propose / approve / execute, IDL | ✅ [`docs/phase-C-status.md`](docs/phase-C-status.md) |
 | D | SDK, CLI, restart-resume, peer privacy | ✅ [`docs/phase-D-status.md`](docs/phase-D-status.md) |
-| E | `demo.sh` against a standalone sequencer, CI e2e | ☐ |
+| E | `demo.sh` against a standalone sequencer, CI e2e | ◐ [`docs/phase-E-status.md`](docs/phase-E-status.md) |
 | F | Basecamp app, downloadable `.lgx` | ☐ |
 | G | Testnet deployment, CU costs, public verification | ☐ |
 | H | Documentation, preflight green, narrated video | ☐ |

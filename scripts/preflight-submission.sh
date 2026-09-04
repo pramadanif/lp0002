@@ -69,15 +69,25 @@ else
 fi
 
 # PF-04 — RISC0_DEV_MODE=1 must not appear on the demo/e2e submission path
-# Exclude demo-fast.sh (explicitly not a submission path) and this script itself, whose own
-# comments and check strings mention the literal.
-pf04_hits=$(grep -rnE 'RISC0_DEV_MODE=1' demo.sh scripts 2>/dev/null \
-  | grep -v 'demo-fast\.sh' \
-  | grep -v 'preflight-submission\.sh' || true)
+# Comments and echoed help text mention the literal, so strip comments before matching and skip the
+# two scripts whose whole job is to talk about it. Matching a comment would make this gate cry wolf,
+# which is how a real violation later gets waved through.
+pf04_files=$( { [[ -f demo.sh ]] && echo demo.sh
+                find scripts -type f -name '*.sh' 2>/dev/null; } \
+              | grep -v 'demo-fast\.sh' \
+              | grep -v 'check-dev-mode-clobber\.sh' \
+              | grep -v 'preflight-submission\.sh' | sort -u )
+pf04_hits=""
+for f in $pf04_files; do
+  # Drop everything from the first '#' on each line, then look for a real assignment.
+  hit=$(sed 's/#.*//' "$f" | grep -nE 'RISC0_DEV_MODE[[:space:]]*=[[:space:]]*1' || true)
+  [[ -n "$hit" ]] && pf04_hits="$pf04_hits$f:$hit"$'\n'
+done
+
 if [[ -z "$pf04_hits" ]]; then
-  ok "PF-04" "no RISC0_DEV_MODE=1 on demo/e2e submission path"
+  ok "PF-04" "no RISC0_DEV_MODE=1 on the demo/e2e submission path"
 else
-  bad "PF-04" "RISC0_DEV_MODE=1 found on submission path:"$'\n'"$pf04_hits"
+  bad "PF-04" "RISC0_DEV_MODE=1 is set on the submission path:"$'\n'"$pf04_hits"
 fi
 
 # PF-05 — CI must run an e2e job on push to main, not cron-only
