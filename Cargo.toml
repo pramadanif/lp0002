@@ -12,7 +12,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.94"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/pramadanif/lp-0002-private-multisig"
+repository = "https://github.com/pramadanif/lp0002"
 
 [workspace.dependencies]
 pmsig-core = { path = "crates/core" }

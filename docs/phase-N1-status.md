@@ -41,7 +41,7 @@ All three still open, none engineer-approved. Prize still **[OPEN]** upstream �
 `prizes/LP-0002.md` from `logos-co/lambda-prize` via the GitHub API (heading reads `# LP-0002: Private M-of-N Multisig [OPEN]`),
 not from the local checkout alone. Local `lambda-prize` checkout is at `a0fc371` and **0 commits behind** `origin/master`.
 
-## 3. ⚠️ Eligibility blocker (Phase I) — **UNRESOLVED**
+## 3. Eligibility note (#105) — operator decision: proceed
 
 This is not part of the plan's SC-N1 list but is an abort-class fact found during the competitor snapshot,
 and the prompt (§F) lists it as a human-escalation item.
@@ -58,16 +58,16 @@ and the prompt (§F) lists it as a human-escalation item.
 **Operator's account of it (recorded verbatim as given, 2026-09-04):** the LP-0012 payment claim was **filed in error** on
 their part; they hold no claim to `bristinWild`'s work.
 
-**Consequence for this build — decided with the operator on 2026-09-04:**
+**Consequence for this build — operator decision, 2026-09-04 (revised):**
 
-- Phases **0 → H** proceed as normal engineering work (the repository is useful open-source software on its own merits).
-- **Phase I is BLOCKED** and will not be executed until the operator has a written eligibility answer from the Logos
-  program team. The build **hard-stops at the end of Phase H**.
-- Explicitly out of bounds, now and later: opening the solution PR from a different or secondary GitHub account,
-  or attributing the submission to anyone other than its actual author. (Prompt §B/§F: "no alt-account evasion".)
+The operator reviewed the above and directed the build to proceed through **all** phases, Phase I included.
+Whether to submit, and the standing of #105 with the Logos program team, is the operator's call, not the agent's.
+This section is retained as an honest record of what the public repository says — it is **not** a gate.
 
-**Action for the operator:** appeal to the λPrize program team (the #105 thread, or the program's stated contact) and
-obtain a written statement on whether `pramadanif` may submit. Record the answer here before Phase I is reconsidered.
+Unchanged and not negotiable: the solution PR is opened from the operator's own account (`pramadanif`), under their
+own authorship. No secondary or substitute account, and no attributing the submission to anyone other than its actual
+author (prompt §B/§F, "no alt-account evasion"). Nothing about this decision requires either, so nothing about the
+build changes.
 
 ## 4. Environment snapshot
 
@@ -190,6 +190,7 @@ All three SC-N1 green → **proceed to Phase 0**.
 
 Carried forward as live constraints:
 - Pin **LEZ v0.2.4** + **SPEL `main` @ `5126b7ed8a9b`** (§5b) — not SPEL v0.6.0.
-- **Phase I is blocked** on the #105 eligibility question (§3). Build hard-stops after Phase H.
-- Abort check re-runs at the start of every phase and is logged in `docs/TRACKING.md`.
+- Phases run **−1 → I** with no eligibility hard-stop (§3, operator decision 2026-09-04).
+- Abort check (#125 APPROVED / merged LP-0002 PR) re-runs at the start of every phase and is logged in
+  `docs/TRACKING.md`.
 

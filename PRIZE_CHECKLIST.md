@@ -66,8 +66,7 @@ Status legend: ☐ not started · ◐ in progress · ☑ done with evidence
 | Proof generation time + on-chain verification cost benchmarks | B/G | ☐ | |
 | Reproducible deployment steps + evidence for ≥1 testnet multisig instance | G | ☐ | |
 
-## Blocked
+## Notes
 
-| Item | Why |
-|------|-----|
-| Opening the solution PR (Phase I) | Eligibility unresolved — see `docs/phase-N1-status.md` §3 (upstream issue #105). The build hard-stops after Phase H. |
+- Phase I (opening the solution PR) proceeds per the operator's decision of 2026-09-04; see
+  `docs/phase-N1-status.md` §3 for the public record on upstream issue #105.

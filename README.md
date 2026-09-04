@@ -6,6 +6,8 @@ met — never which members approved.
 
 Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0**.
 
+Repository: <https://github.com/pramadanif/lp0002>
+
 > **Status: early. Phase 0 of 10.** The repository skeleton, CI and submission preflight are in
 > place; the circuits, the on-chain program and the demo are not written yet. Nothing here claims
 > to work on testnet. See [Build status](#build-status) for exactly what exists.
