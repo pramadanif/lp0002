@@ -162,14 +162,19 @@ else
 fi
 
 # PF-10 — public on-chain verification must actually run
-if [[ -x scripts/verify-onchain.sh ]]; then
-  if scripts/verify-onchain.sh >/dev/null 2>&1; then
-    ok "PF-10" "verify-onchain.sh exits 0"
-  else
-    bad "PF-10" "verify-onchain.sh exited non-zero"
-  fi
-else
+#
+# Distinguishes "Phase G has not run" from "verification failed". A script that cannot verify
+# because nothing is deployed yet is PENDING; one that runs and disagrees with the chain is a FAIL.
+# Conflating the two would either block early phases or, worse, let a real verification failure hide
+# behind "not deployed yet".
+if [[ ! -x scripts/verify-onchain.sh ]]; then
   pend "PF-10" "scripts/verify-onchain.sh not executable yet (Phase G)"
+elif [[ ! -s docs/DEPLOYMENT.md ]]; then
+  pend "PF-10" "verify-onchain.sh exists but nothing is deployed yet (Phase G)"
+elif scripts/verify-onchain.sh >/dev/null 2>&1; then
+  ok "PF-10" "verify-onchain.sh exits 0 against the published deployment"
+else
+  bad "PF-10" "verify-onchain.sh exited non-zero against the published deployment"
 fi
 
 # PF-11 — pinned guest ImageIDs
