@@ -1,0 +1,55 @@
+# Phase -1 evidence: live testnet version fingerprint
+captured_utc: 2026-09-04T11:17:49Z
+
+## Method
+A LEZ ProgramId is the risc0 ImageID of the program ELF. LEZ ships prebuilt program
+binaries in artifacts/ at each tag. Computing the ImageID of those committed binaries
+and comparing against the live testnet's getProgramIds identifies the deployed version.
+ImageIDs computed host-side with risc0-zkvm 3.0.5 compute_image_id().
+
+## Computed ImageIDs of LEZ committed artifacts
+/private/tmp/claude-501/-Users-muhammadbaguspramadani-Documents-myproject-lambda-prize/8a907880-cc81-4f17-a2a7-d5061a99c725/scratchpad/bins/token-v0.2.0.bin
+  words = [2282739141, 348907455, 1046946228, 3735699860, 585462133, 3426087150, 772528164, 2090518099]
+  hex   = c5d50f88bfe7cb14b421673e9441aade7571e522eef035cc24d80b2e53c69a7c
+/private/tmp/claude-501/-Users-muhammadbaguspramadani-Documents-myproject-lambda-prize/8a907880-cc81-4f17-a2a7-d5061a99c725/scratchpad/bins/token-v0.2.4.bin
+  words = [1047643340, 4291649067, 2093396023, 4016657193, 3904308476, 481382041, 2987082047, 2603530278]
+  hex   = ccc4713e2b5ecdff37b0c67c295369effc04b7e8994eb11c3f410bb226b82e9b
+/private/tmp/claude-501/-Users-muhammadbaguspramadani-Documents-myproject-lambda-prize/8a907880-cc81-4f17-a2a7-d5061a99c725/scratchpad/bins/ppc-v0.2.0.bin
+  words = [1473414827, 2830688453, 889928182, 3392605264, 2857892388, 2747074170, 4080825648, 1235408490]
+  hex   = ab86d257c5e0b8a8f6390b35500c37ca24fa57aa7a06bda330753cf36ad6a249
+/private/tmp/claude-501/-Users-muhammadbaguspramadani-Documents-myproject-lambda-prize/8a907880-cc81-4f17-a2a7-d5061a99c725/scratchpad/bins/ppc-v0.2.4.bin
+  words = [1334328888, 3910590567, 1244219104, 3671232111, 3138827701, 405554639, 4064616947, 1864368340]
+  hex   = 383e884f67e016e9e046294a6f8ed2dab5b516bbcf452c18f32145f2d400206f
+
+## Live testnet getProgramIds (token, privacy_preserving_circuit)
+{
+  "token": [
+    1047643340,
+    4291649067,
+    2093396023,
+    4016657193,
+    3904308476,
+    481382041,
+    2987082047,
+    2603530278
+  ],
+  "privacy_preserving_circuit": [
+    1334328888,
+    3910590567,
+    1244219104,
+    3671232111,
+    3138827701,
+    405554639,
+    4064616947,
+    1864368340
+  ]
+}
+
+## Artifact blob shas per tag (git blob sha, via GitHub API)
+token.bin:  v0.2.0=210c7c3a  v0.2.2=865d618e  v0.2.3=865d618e  v0.2.4=865d618e
+ppc.bin:    v0.2.0=8db9385b  v0.2.2=7cbc7f94                   v0.2.4=7cbc7f94
+
+## Conclusion
+Live testnet token + privacy_preserving_circuit ImageIDs match the v0.2.4 artifacts EXACTLY
+and do NOT match v0.2.0. Since v0.2.2/v0.2.3/v0.2.4 ship byte-identical artifact blobs, the
+testnet runs that family; v0.2.4 is its latest tag. => PIN LEZ v0.2.4.
