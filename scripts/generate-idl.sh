@@ -17,7 +17,7 @@ mkdir -p artifacts
 OUT=artifacts/multisig-idl.json
 
 echo "==> generating IDL from #[lez_program] annotations"
-( cd programs/multisig-spel && cargo run --quiet --bin multisig ) | jq . > "$OUT"
+( cd programs/multisig-spel && cargo run --quiet --bin idl ) | jq . > "$OUT"
 
 INSTRUCTIONS=$(jq -r '.instructions | length' "$OUT")
 NAME=$(jq -r '.name' "$OUT")

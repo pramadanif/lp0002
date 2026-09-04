@@ -10,8 +10,12 @@ name = "pmsig_multisig_program"
 path = "src/lib.rs"
 
 [[bin]]
+name = "idl"
+path = "src/bin/idl.rs"
+
+[[bin]]
 name = "multisig"
-path = "src/main.rs"
+path = "src/bin/guest.rs"
 
 [dependencies]
 pmsig-core = { path = "../../crates/core" }
