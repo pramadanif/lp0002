@@ -1,0 +1,15 @@
+[package]
+name = "pmsig-core"
+description = "Shared types and domain-separated hash formulas for the private M-of-N multisig. Compiles for both host and risc0 guest."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+borsh.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

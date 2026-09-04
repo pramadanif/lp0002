@@ -1,0 +1,20 @@
+[package]
+name = "pmsig-cli"
+description = "CLI for shielded members: create, propose, approve and execute a private M-of-N multisig."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "pmsig"
+path = "src/main.rs"
+
+[dependencies]
+pmsig-core.workspace = true
+pmsig-sdk.workspace = true
+pmsig-store.workspace = true
+
+[lints]
+workspace = true

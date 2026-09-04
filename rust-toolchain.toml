@@ -1,0 +1,5 @@
+# Kept in sync with logos-execution-zone v0.2.4 (the revision the live LEZ testnet runs).
+# See docs/VERSIONS.md for how that pin was established.
+[toolchain]
+channel = "1.94.0"
+profile = "default"

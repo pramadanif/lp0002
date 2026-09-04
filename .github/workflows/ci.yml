@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# No `continue-on-error` and no conditional skips anywhere in this file. Plan gate H2: a job that
+# cannot do its work must fail, never pass silently.
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  quality:
+    name: fmt + clippy + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # rust-toolchain.toml pins 1.94.0 to match logos-execution-zone v0.2.4.
+      - name: Install Rust toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          rustup component add rustfmt clippy
+          rustc --version && cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: cargo fmt --check
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        run: cargo test --workspace --all-targets
+
+  dev-mode-clobber:
+    name: RISC0_DEV_MODE clobber check (H3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-dev-mode-clobber.sh
+        run: ./scripts/check-dev-mode-clobber.sh
+
+  scripts-lint:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: shellcheck
+        run: shellcheck -S warning scripts/*.sh $( [ -f demo.sh ] && echo demo.sh )
+
+# Jobs added by later phases (tracked so their absence is visible, not forgotten):
+#   e2e-sequencer  — Phase E. Full lifecycle against a standalone LEZ sequencer with
+#                    RISC0_DEV_MODE=0, gated on push to main (plan gates H4 / W14; preflight PF-05).
+#   explorer-links — Phase G. Fails when any evidence URL 404s or returns a null result (W2).
+#   preflight      — Phase H. Runs scripts/preflight-submission.sh, which exits 1 until every
+#                    check passes; it is deliberately NOT wired yet because it must stay red
+#                    until the submission packet is real.
