@@ -1,0 +1,21 @@
+[package]
+name = "pmsig-multisig-core"
+description = "On-chain state layout, instruction types and error codes for the multisig program."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+pmsig-core.workspace = true
+pmsig-membership-core.workspace = true
+borsh.workspace = true
+serde.workspace = true
+lee_core.workspace = true
+
+[dev-dependencies]
+lee_core = { workspace = true, features = ["host"] }
+
+[lints]
+workspace = true

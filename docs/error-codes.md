@@ -30,6 +30,7 @@ leak identity, so none of them names a member.
 | **1010** | `AccountAlreadyInitialized` | Multisig or proposal created twice | `create_*` targeting a PDA whose account is not in default state |
 | **1011** | `PublicApprovePathRejected` | Approval attempted outside the privacy-preserving path | An `approve` whose execution is not privacy-preserving. There is no public approve path; this makes the refusal explicit and testable rather than implicit (gate H9, **SC-C.8**) |
 | **1012** | `InvalidProposalAction` | Proposed action is malformed or unsupported | Action fails to decode, or a transfer names an account the multisig does not control |
+| **1013** | `WrongMembershipProgram` | The approval was verified by a program this multisig is not bound to | The chained call's `program_id` ≠ the `membership_program_id` the config account rehashes to ([ADR-002](adr/ADR-002-bind-verifier-to-config-hash.md)) |
 
 ## 2. Client-side SDK errors (2xxx)
 
@@ -70,7 +71,7 @@ Each code is asserted by a test; this table is filled in with test names as the 
 
 | Codes | Asserted in | Phase |
 |-------|-------------|-------|
-| 1001, 1002, 1007 | membership guest + program negative tests | B, C |
+| 1001, 1002, 1007, 1013 | membership guest + program negative tests | B, C |
 | 1003, 1006, 1009, 1010 | PDA / config validation tests | C |
 | 1004, 1005, 1008, 1012 | lifecycle tests | C |
 | 1011 | public-path rejection test (SC-C.8) | C |

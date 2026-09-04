@@ -1,0 +1,25 @@
+[package]
+name = "pmsig-multisig-program"
+description = "SPEL program for the private M-of-N multisig: create, propose, approve (privacy-preserving only), execute."
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+
+[lib]
+name = "pmsig_multisig_program"
+path = "src/lib.rs"
+
+[[bin]]
+name = "multisig"
+path = "src/main.rs"
+
+[dependencies]
+pmsig-core = { path = "../../crates/core" }
+pmsig-membership-core = { path = "../../crates/membership-core" }
+pmsig-multisig-core = { path = "../../crates/multisig-core" }
+spel-framework = { git = "https://github.com/logos-co/spel.git", rev = "5126b7ed8a9b" }
+nssa_core = { git = "https://github.com/logos-blockchain/logos-execution-zone.git", tag = "v0.2.4", package = "lee_core" }
+borsh = { version = "1.5", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+risc0-zkvm = { version = "3.0.6", default-features = false, features = ["std"] }

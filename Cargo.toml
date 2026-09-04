@@ -7,9 +7,10 @@ members = [
     "crates/store",
     "crates/membership-core",
     "crates/guest-tools",
+    "crates/multisig-core",
 ]
 # Guests cross-compile to riscv32im-risc0-zkvm-elf and are built separately, not as workspace members.
-exclude = ["programs/membership-lez"]
+exclude = ["programs/membership-lez", "programs/multisig-spel"]
 
 [workspace.package]
 version = "0.1.0"
@@ -23,6 +24,7 @@ pmsig-core = { path = "crates/core" }
 pmsig-sdk = { path = "crates/sdk" }
 pmsig-store = { path = "crates/store" }
 pmsig-membership-core = { path = "crates/membership-core" }
+pmsig-multisig-core = { path = "crates/multisig-core" }
 
 anyhow = "1"
 borsh = { version = "1.5", features = ["derive"] }

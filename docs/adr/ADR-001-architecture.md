@@ -62,7 +62,7 @@ the "proof" would be an unverified attachment rather than part of the transactio
 ### D3 — The member set and the threshold are anchored in the PDA seed
 
 ```
-config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] )
+config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] ‖ membership_program_id[32] )
 ```
 
 and the multisig's config account lives at `AccountId::for_public_pda(program_id, PdaSeed(config_hash))`
@@ -190,9 +190,11 @@ DS_PROP   = "/LP0002/v1/ProposalSeed/"      ++ [0u8;  8]   // 24 +  8 = 32
 
 **This is the one and only definition of `config_hash` in this repository.** README and the solution
 write-up quote this line verbatim; preflight check PF-13 fails the build if they ever drift (H14/W17).
+The `membership_program_id` field was added by [ADR-002](ADR-002-bind-verifier-to-config-hash.md), so
+that substituting the verifier fails the same way lowering `M` does.
 
 ```text
-config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] )
+config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] ‖ membership_program_id[32] )
 ```
 
 ```text
@@ -206,7 +208,7 @@ proposal_pda_seed = SHA256( DS_PROP ‖ config_hash[32] ‖ proposal_id[32] )
 ```
 
 Sizes: `M` and `N` are single bytes (`u8`); `member_root`, `multisig_id`, `proposal_id`, `npk`, `nsk`
-are 32 bytes each. All multi-byte integers elsewhere are little-endian, matching LEZ.
+are 32 bytes each; `membership_program_id` is a LEZ `ProgramId` (`[u32; 8]`, little-endian, 32 bytes). All multi-byte integers elsewhere are little-endian, matching LEZ.
 
 `member_node` deliberately mirrors LEZ's `compute_digest_for_path` (`commitment.rs`): the leaf is
 hashed, then combined pairwise with `SHA256(left ‖ right)`, selecting sides by the index bit and
@@ -219,8 +221,10 @@ PDA seed. A prover who claims `M' = 1` computes `config_hash' ≠ config_hash`, 
 *different* account address. No multisig exists there, so there is nothing to approve. Lowering the
 threshold does not weaken a multisig; it names one that does not exist.
 
-**INV-2 — a prover cannot substitute a member set.** Identical argument for `member_root`: inventing a
-set containing yourself changes `config_hash` and therefore the address.
+**INV-2 — a prover cannot substitute a member set, or the verifier.** Identical argument for
+`member_root`, and — since [ADR-002](ADR-002-bind-verifier-to-config-hash.md) — for
+`membership_program_id`: naming a hostile membership program that accepts every witness changes
+`config_hash` and therefore the address.
 
 **INV-3 — the config account must match its own address.** The program recomputes `config_hash` from
 the account's stored `(member_root, M, N, multisig_id)` and asserts it equals the seed the account was

@@ -8,10 +8,11 @@ Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0*
 
 Repository: <https://github.com/pramadanif/lp0002>
 
-> **Status: Phase B of 10 complete.** The membership guest proves and verifies for real
-> (`RISC0_DEV_MODE=0`, 53.26 s on a laptop). The on-chain SPEL program, the demo and the testnet
-> deployment are not written yet, and nothing here has touched testnet. See
-> [Build status](#build-status) for exactly what exists.
+> **Status: Phase C of 10 complete.** The membership guest proves and verifies for real
+> (`RISC0_DEV_MODE=0`, 53.26 s on a laptop) and the on-chain SPEL program enforces the full
+> lifecycle with a published IDL. The end-to-end privacy-preserving composition has **not** been
+> demonstrated against a running sequencer yet, the demo is not written, and nothing here has touched
+> testnet. See [Build status](#build-status) for exactly what exists.
 
 ---
 
@@ -52,7 +53,7 @@ does not find the multisig there.
 The multisig's config account lives at `for_public_pda(program_id, PdaSeed(config_hash))`, where
 
 ```text
-config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] )
+config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] ‖ membership_program_id[32] )
 DS_CONFIG   = "/LP0002/v1/ConfigHash/" ++ [0u8; 10]      // 22 + 10 = 32 bytes
 ```
 
@@ -70,7 +71,7 @@ Each phase has a status document recording the exact commands run, their exit co
 | 0 | Repo skeleton, dual licence, CI, preflight harness | ✅ [`docs/phase-0-status.md`](docs/phase-0-status.md) |
 | A | ADR, account model, security model, error codes | ✅ [`docs/phase-A-status.md`](docs/phase-A-status.md) |
 | B | Membership + nullifier guest, one real `RISC0_DEV_MODE=0` proof | ✅ [`docs/phase-B-status.md`](docs/phase-B-status.md) |
-| C | SPEL program: create / propose / approve / execute, IDL | ☐ |
+| C | SPEL program: create / propose / approve / execute, IDL | ✅ [`docs/phase-C-status.md`](docs/phase-C-status.md) |
 | D | SDK, CLI, restart-resume, peer privacy | ☐ |
 | E | `demo.sh` against a standalone sequencer, CI e2e | ☐ |
 | F | Basecamp app, downloadable `.lgx` | ☐ |
@@ -113,6 +114,8 @@ with `RISC0_DEV_MODE=0`, and it will fail — not skip — if a required tool is
 
 ```
 crates/core      shared types and hash formulas (host + guest)
+crates/multisig-core  on-chain state, error codes, lifecycle rules
+crates/membership-core witness types and the membership check
 crates/sdk       client-side proving and transaction building
 crates/store     local persistence for partial approval sets
 crates/cli       `pmsig` command-line client

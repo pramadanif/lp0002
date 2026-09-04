@@ -65,25 +65,32 @@ fn sha256(bytes: &[u8]) -> Digest32 {
     out
 }
 
-/// `config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] )`
+/// `config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] ‖ membership_program_id[32] )`
 ///
-/// Used directly as the 32-byte PDA seed of the multisig's config account. Because `M` and
-/// `member_root` are inside the digest, a prover who lowers the threshold or substitutes a member
-/// set derives a *different* address rather than a weaker multisig (ADR-001 INV-1 and INV-2).
+/// Used directly as the 32-byte PDA seed of the multisig's config account. Because `M`,
+/// `member_root` and the verifier's program id are all inside the digest, a prover who lowers the
+/// threshold, substitutes a member set, or names a hostile membership program derives a *different*
+/// address rather than a weaker multisig (ADR-001 INV-1/INV-2, extended by ADR-002).
+///
+/// `membership_program_id` is a LEZ `ProgramId` (`[u32; 8]`) serialised little-endian.
 #[must_use]
 pub fn config_hash(
     member_root: &Digest32,
     m: Threshold,
     n: MemberCount,
     multisig_id: &Digest32,
+    membership_program_id: &[u32; 8],
 ) -> Digest32 {
-    let mut buf = [0_u8; 32 + 32 + 1 + 1 + 32];
+    let mut buf = [0_u8; 32 + 32 + 1 + 1 + 32 + 32];
     let mut w = Writer::new(&mut buf);
     w.put(&DS_CONFIG);
     w.put(member_root);
     w.put(&[m]);
     w.put(&[n]);
     w.put(multisig_id);
+    for word in membership_program_id {
+        w.put(&word.to_le_bytes());
+    }
     sha256(w.finish())
 }
 
@@ -183,6 +190,7 @@ mod tests {
     use super::*;
 
     const ROOT: Digest32 = [0x11; 32];
+    const VERIFIER: [u32; 8] = [9; 8];
     const MSIG: Digest32 = [0x22; 32];
     const NSK: Digest32 = [0x33; 32];
     const PROP: Digest32 = [0x44; 32];
@@ -218,28 +226,45 @@ mod tests {
     /// ADR-001 INV-1: lowering the threshold changes the address rather than weakening the multisig.
     #[test]
     fn lowering_m_changes_config_hash() {
-        let honest = config_hash(&ROOT, 2, 3, &MSIG);
-        let lowered = config_hash(&ROOT, 1, 3, &MSIG);
+        let honest = config_hash(&ROOT, 2, 3, &MSIG, &VERIFIER);
+        let lowered = config_hash(&ROOT, 1, 3, &MSIG, &VERIFIER);
         assert_ne!(honest, lowered);
     }
 
     /// ADR-001 INV-2: substituting a member set changes the address.
     #[test]
     fn substituting_member_root_changes_config_hash() {
-        let honest = config_hash(&ROOT, 2, 3, &MSIG);
-        let forged = config_hash(&[0xAA; 32], 2, 3, &MSIG);
+        let honest = config_hash(&ROOT, 2, 3, &MSIG, &VERIFIER);
+        let forged = config_hash(&[0xAA; 32], 2, 3, &MSIG, &VERIFIER);
         assert_ne!(honest, forged);
     }
 
     #[test]
     fn config_hash_separates_every_field() {
-        let base = config_hash(&ROOT, 2, 3, &MSIG);
-        assert_ne!(base, config_hash(&ROOT, 2, 4, &MSIG), "n must matter");
+        let base = config_hash(&ROOT, 2, 3, &MSIG, &VERIFIER);
         assert_ne!(
             base,
-            config_hash(&ROOT, 2, 3, &[0x99; 32]),
+            config_hash(&ROOT, 2, 4, &MSIG, &VERIFIER),
+            "n must matter"
+        );
+        assert_ne!(
+            base,
+            config_hash(&ROOT, 2, 3, &[0x99; 32], &VERIFIER),
             "multisig_id must matter"
         );
+        assert_ne!(
+            base,
+            config_hash(&ROOT, 2, 3, &MSIG, &[1; 8]),
+            "the membership verifier must matter (ADR-002)"
+        );
+    }
+
+    /// ADR-002: naming a hostile verifier changes the address, exactly as lowering M does.
+    #[test]
+    fn substituting_the_verifier_changes_config_hash() {
+        let honest = config_hash(&ROOT, 2, 3, &MSIG, &VERIFIER);
+        let hostile = config_hash(&ROOT, 2, 3, &MSIG, &[0xDEAD_BEEF; 8]);
+        assert_ne!(honest, hostile);
     }
 
     /// ADR-001 INV-4: the same member approving the same proposal twice yields the same nullifier.
