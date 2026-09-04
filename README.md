@@ -8,9 +8,9 @@ Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0*
 
 Repository: <https://github.com/pramadanif/lp0002>
 
-> **Status: early. Phase 0 of 10.** The repository skeleton, CI and submission preflight are in
-> place; the circuits, the on-chain program and the demo are not written yet. Nothing here claims
-> to work on testnet. See [Build status](#build-status) for exactly what exists.
+> **Status: early. Phase A of 10 complete.** Skeleton, CI, submission preflight and the full design
+> are in place; the circuits, the on-chain program and the demo are not written yet. Nothing here
+> claims to work on testnet. See [Build status](#build-status) for exactly what exists.
 
 ---
 
@@ -32,7 +32,7 @@ knowledge: *I control an account whose commitment is in the member set*, without
 
 ## Approach
 
-Locked in [`docs/adr/ADR-001-architecture.md`](docs/adr/) — written in Phase A, summarised here:
+Locked in [`docs/adr/ADR-001-architecture.md`](docs/adr/ADR-001-architecture.md) — summarised here:
 
 | Decision | Choice |
 |----------|--------|
@@ -48,6 +48,17 @@ Anchoring the member root **and** `M` in the PDA seed is what stops the obvious 
 invents their own member set, or quietly lowers the threshold, derives a different PDA and simply
 does not find the multisig there.
 
+The multisig's config account lives at `for_public_pda(program_id, PdaSeed(config_hash))`, where
+
+```text
+config_hash = SHA256( DS_CONFIG ‖ member_root[32] ‖ M[1] ‖ N[1] ‖ multisig_id[32] )
+DS_CONFIG   = "/LP0002/v1/ConfigHash/" ++ [0u8; 10]      // 22 + 10 = 32 bytes
+```
+
+This line is the single definition of `config_hash` in the project; [ADR-001
+§3](docs/adr/ADR-001-architecture.md) and the solution write-up quote it verbatim, and preflight check
+PF-13 fails the build if the three ever drift apart.
+
 ## Build status
 
 Each phase has a status document recording the exact commands run, their exit codes and log paths.
@@ -55,8 +66,8 @@ Each phase has a status document recording the exact commands run, their exit co
 | Phase | What it delivers | Status |
 |-------|------------------|--------|
 | −1 | Competitor + environment preflight, version pins | ✅ [`docs/phase-N1-status.md`](docs/phase-N1-status.md) |
-| 0 | Repo skeleton, dual licence, CI, preflight harness | ◐ in progress |
-| A | ADR, account model, security model, error codes | ☐ |
+| 0 | Repo skeleton, dual licence, CI, preflight harness | ✅ [`docs/phase-0-status.md`](docs/phase-0-status.md) |
+| A | ADR, account model, security model, error codes | ✅ [`docs/phase-A-status.md`](docs/phase-A-status.md) |
 | B | Membership + nullifier guest, one real `RISC0_DEV_MODE=0` proof | ☐ |
 | C | SPEL program: create / propose / approve / execute, IDL | ☐ |
 | D | SDK, CLI, restart-resume, peer privacy | ☐ |
@@ -105,7 +116,7 @@ crates/sdk       client-side proving and transaction building
 crates/store     local persistence for partial approval sets
 crates/cli       `pmsig` command-line client
 scripts/         preflight, dev-mode clobber check; e2e + verification land later
-docs/            phase status docs, ADRs, version pins, plan copies
+docs/            phase status docs, ADRs, security model, error codes, version pins
 artifacts/       evidence: ImageIDs, probe output, binary hashes
 ```
 
