@@ -83,14 +83,25 @@ the member as a clear error — so each carries what the member can actually do 
 | **2001** | `ProofGenerationFailed` | The prover did not produce a receipt | Underlying error and log path are included. Most common causes: `r0vm` missing, or the machine ran out of memory |
 | **2002** | `ProverNotFound` | `r0vm` is not installed or not on `PATH` | Reports the install command. **Never** silently degrades to dev mode |
 | **2003** | `DevModeRefused` | `RISC0_DEV_MODE=1` on a real submission path | Dev-mode receipts prove nothing; the SDK refuses rather than producing a worthless proof (H3) |
-| **2004** | `NotAMember` | The supplied `nsk` derives an `npk` that is not under `member_root` | Wrong key, or wrong multisig |
-| **2005** | `AccountNotLive` | The member's account commitment is not in the live commitment set | Usually the account was already spent by a concurrent transaction — refresh state and retry |
+| **2004** | `NotAMember` | The supplied `nsk` derives an `npk` that is not under `member_root` | Wrong key, or wrong multisig. Raised by `pmsig-cli`; the `SdkError` variant exists for integrators that do the same check |
 | **2006** | `AlreadyApproved` | This member already approved this proposal | Detected locally from the on-chain nullifier set before wasting a proof |
 | **2007** | `StaleProposal` | Local state is behind the chain | The proposal was executed or closed; resynchronise |
-| **2008** | `SequencerUnreachable` | The RPC endpoint did not answer | Endpoint and underlying transport error are included |
-| **2009** | `SequencerRejected` | The sequencer refused the transaction | The sequencer's reason is passed through verbatim, not reinterpreted |
 | **2010** | `StoreCorrupt` | The local approval store failed to load | Path and parse error included; the store is never silently discarded (**P-R2**) |
-| **2011** | `ConfigMismatch` | Local multisig config does not hash to the on-chain address | Protects against a tampered or wrong local config file |
+
+### 2.1 Retired codes
+
+Never reused, listed so an older log or client remains readable.
+
+| Code | Name | Why retired |
+|------|------|-------------|
+| `2005` | `AccountNotLive` | Described a client-side pre-check that the member's account commitment is in the live set. No such check was written. The property itself *is* enforced, but on chain and in the guest: `verify_approval` re-derives the account id from the witness and asserts it equals the account being spent (H8, ADR-001 INV-5). A client-side pre-check would only have saved a wasted proof |
+| `2008` | `SequencerUnreachable` | Described a transport the SDK does not have |
+| `2009` | `SequencerRejected` | Likewise. `pmsig-sdk` deliberately has no sequencer client: it prepares and proves, and the caller submits. In this repository submission is done by the SPEL CLI (`scripts/e2e-local-sequencer.sh`), which reports its own transport failures |
+| `2011` | `ConfigMismatch` | Never defined beyond the row itself, and never raised |
+
+These were catalogued but never implemented — the catalogue described an SDK slightly larger than
+the one that exists. They are removed rather than left as codes a client could wait for forever;
+`code_catalogue_matches_the_code` now fails if a documented client code has no error behind it.
 
 ## 3. Design notes
 

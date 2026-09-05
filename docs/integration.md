@@ -30,8 +30,19 @@ cargo run -p pmsig-sdk --example integrate
    seeds its PDA.
 3. **Propose.** Content is public — the prize hides *who approved*, not *what was proposed*.
 4. **Approve.** `member::prepare_approval` takes a `MultisigView` (public) and `MemberSecrets`
-   (private) and returns a claim/witness pair. Prove it with `prove::prove_approval`, then submit.
-5. **Execute.** Anyone may submit this once the threshold is met — including a non-member.
+   (private) and returns a claim/witness pair.
+
+   **Submission is not the SDK's job, and the receipt is not the thing you submit.**
+   `prove::prove_approval` proves the *membership guest on its own* — useful to check a witness
+   locally, and what the ~53 s figure below measures. What the chain accepts is a
+   privacy-preserving transaction in which LEZ's own circuit runs `env::verify` over the chained
+   call; that is built and proved by the wallet or CLI you submit through, and costs ~19 min
+   (see [cu-costs.md](cu-costs.md)). `pmsig-sdk` has no sequencer client at all. In this repository
+   the submitting client is the SPEL CLI — see the `approve` step of
+   `scripts/e2e-local-sequencer.sh` for the exact invocation, including how the witness is passed.
+5. **Execute.** Anyone may submit this once the threshold is met — including a non-member. The
+   transfer that executes is the one the proposal named: `execute` refuses a recipient account the
+   proposal did not name (INV-7).
 
 ## Two things that are easy to get wrong
 
