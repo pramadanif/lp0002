@@ -192,6 +192,15 @@ else
   bad "PF-11" "a committed guest binary is stale — run ./scripts/check-guests-fresh.sh"
 fi
 
+# PF-06b — every relative Markdown link resolves at the pin. #125 was pulled up for a
+# `limitations.md` link that 404'd at its own pinned commit; a reviewer reads this repo at a commit,
+# not on a live branch.
+if ./scripts/check-links.sh >/dev/null 2>&1; then
+  ok "PF-06" "every relative Markdown link resolves"
+else
+  bad "PF-06" "a relative Markdown link is broken — run ./scripts/check-links.sh"
+fi
+
 # PF-12 — narrated video link + transcript
 vid_src=""
 [[ -f docs/SOLUTION_DRAFT.md ]] && vid_src=docs/SOLUTION_DRAFT.md

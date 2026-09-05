@@ -156,6 +156,14 @@ jobs:
       - name: check-guests-fresh.sh
         run: ./scripts/check-guests-fresh.sh
 
+  links:
+    name: every relative Markdown link resolves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-links.sh
+        run: ./scripts/check-links.sh
+
   basecamp-privacy:
     name: Basecamp UI must not leak member secrets
     runs-on: ubuntu-latest
