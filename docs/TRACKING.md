@@ -48,16 +48,21 @@
 
 ## Phase ledger
 
+Commit column: the commit that **added** each status document. Two entries here named commits that
+do not exist (`8e2f0b1`, `4c1a8f2`) — history was rewritten by a `git filter-branch` that purged a
+leaked key, and the recorded hashes were never updated. A reviewer checking them would have found
+nothing. Corrected 2026-09-05; every hash below now resolves.
+
 | Phase | Status | Status doc | Commit |
 |-------|--------|-----------|--------|
-| −1 | ✅ complete | `docs/phase-N1-status.md` | (this commit) |
+| −1 | ✅ complete | `docs/phase-N1-status.md` | `f6a1a15` |
 | 0  | ✅ complete | `docs/phase-0-status.md` | `5ef6b93` / `b14f49e` |
 | A  | ✅ complete | `docs/phase-A-status.md` | `ec9534a` |
 | B  | ✅ complete | `docs/phase-B-status.md` | `f8b6e5f` |
-| C  | ✅ complete | `docs/phase-C-status.md` | `8e2f0b1` |
-| D  | ✅ complete | `docs/phase-D-status.md` | `4c1a8f2` |
-| E  | ◐ in progress (3/8 SC) | `docs/phase-E-status.md` | — |
-| F  | not started | — | — |
+| C  | ✅ complete | `docs/phase-C-status.md` | `aebb278` |
+| D  | ✅ complete | `docs/phase-D-status.md` | `10276c1` |
+| E  | ◐ in progress (5/8 green, 2 in progress) | `docs/phase-E-status.md` | `7026ecf` |
+| F  | ◐ in progress (2/7 SC) | `docs/phase-F-status.md` | `de77b2e` |
 | G  | not started | — | — |
 | H  | not started | — | — |
 | I  | not started | — | — |

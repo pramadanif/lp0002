@@ -1,8 +1,10 @@
 # Phase C status — SPEL multisig + membership program
 
-**Date:** 2026-09-04
+**Date:** 2026-09-04, updated 2026-09-05
 **Plan contract:** `docs/plan/planlp0002.md` §5 Phase C
-**Result:** **all 8 SC green — Phase C complete.**
+**Result:** **all 8 SC green — Phase C complete.** Two serious defects were found in this phase's
+deliverable *after* it closed; see "Found after this phase closed" at the end. They are fixed, and
+the reason they survived is recorded there rather than quietly patched.
 
 Abort check at phase start: #125 `reviewDecision` empty; merged LP-0002 PRs → 0. Not aborting.
 
@@ -91,3 +93,31 @@ open risk rather than folded into the green above.
 ## Exit
 
 All SC-C green → **proceed to Phase D** (SDK, CLI, restart-resume, peer privacy).
+
+## Found after this phase closed
+
+Both were in the SPEL program, the deliverable this phase declared complete. Recording them here
+because "all 8 SC green" is the sort of line a reviewer is entitled to test, and because *why* they
+survived matters more than the fixes.
+
+**The program was never executed by any test.** Every test in this phase ran the rules
+(`logic::*`) as host functions. Account ordering, PDA derivation, state encoding and the
+`ChainedCall` had no coverage at all — a bug in the SPEL wrapper would have reached testnet before
+it reached a test. The cause was mundane: the `Instruction` enum the macro generated was **private**,
+so nothing outside the guest could construct one. Moving it to `pmsig_multisig_core` and using
+`#[lez_program(instruction = "...")]` made the program testable, and
+`crates/sdk/tests/multisig_program.rs` now drives the deployed binary through the risc0 executor.
+
+**`execute` did not pay the account the members approved (INV-7).** It destructured the approved
+action as `ProposedAction::TreasuryTransfer { amount, .. }`, discarding the recipient, and took a
+caller-supplied `treasury` account that nothing tied to the multisig. Since the approvals cover only
+the *proposal* and everything else in the transaction is chosen by whoever submits it, a submitter
+could have redirected an approved payment to themselves with every approval still verifying. Found
+by the executor tests above, on the first day they existed. The funds now leave the multisig's own
+config PDA and the recipient must be the one the proposal named; see
+[ADR-001 INV-7](adr/ADR-001-architecture.md) and `execute_refuses_a_recipient_the_proposal_did_not_name`.
+
+Neither script would have caught the second one: both proposed a transfer to one address and then
+executed with `--treasury $CREATOR --recipient $CREATOR`, moving money from an account to itself.
+That is worth stating plainly — the lifecycle "passed" end to end while exercising the bug rather
+than the feature.

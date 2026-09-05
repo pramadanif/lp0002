@@ -1,8 +1,10 @@
 # Phase E status — demo.sh + CI e2e
 
-**Date:** 2026-09-04
+**Date:** 2026-09-04, updated 2026-09-05
 **Plan contract:** `docs/plan/planlp0002.md` §5 Phase E
-**Result:** **IN PROGRESS — 5 of 8 SC green. Phase E is NOT complete, but the composition is now DEMONSTRATED.**
+**Result:** **IN PROGRESS — 5 of 8 SC green, 2 now in progress. Phase E is NOT complete.** The
+composition is demonstrated; the scripted end-to-end run is written and running in CI but has not
+yet completed.
 
 Abort check at phase start: #125 `reviewDecision` empty; merged LP-0002 PRs → 0. Not aborting.
 
@@ -16,21 +18,37 @@ ones prior submissions failed. So the status below is deliberately blunt about w
 |----|-------------|-------|----------|
 | **SC-E.1** | Fresh clone `./demo.sh` → 0 with a standalone sequencer (**H1/W13**, **P-S5**) | ⛔ **not met** | `demo.sh` and `scripts/e2e-local-sequencer.sh` are written and get as far as building the sequencer. The lifecycle step is unimplemented and the script **fails there** rather than reporting a success it has not earned |
 | **SC-E.2** | Log shows `RISC0_DEV_MODE=0` + real prove + sequencer RPC | ✅ green | All three demonstrated. Sequencer: builds, starts, `RPC server on 0.0.0.0:3040`, `getLastBlockId` read by the script. Real prove: an anonymous approval proved with `RISC0_DEV_MODE=0` in ≈19 min and **confirmed on chain** (tx `f2458791…198fbcb5`). Evidence: `artifacts/phase-E-sequencer-live.txt`, `artifacts/phase-E-ppe-approve-SUCCESS.txt` |
-| **SC-E.3** | `check-dev-mode-clobber.sh` → 0 (**H3**) | ✅ green | Exit 0 over 5 submission-path scripts incl. `demo.sh`. Verified in both directions: injecting `export RISC0_DEV_MODE=1` makes it exit 1 |
-| **SC-E.4** | CI green on `main` including a **push-gated** `e2e-sequencer` job (**H4/W14**) | ⛔ **not met** | Deliberately not wired — see below |
+| **SC-E.3** | `check-dev-mode-clobber.sh` → 0 (**H3**) | ✅ green | Exit 0 over **13** submission-path scripts incl. `demo.sh`. Verified in both directions: injecting `export RISC0_DEV_MODE=1` makes it exit 1 |
+| **SC-E.4** | CI green on `main` including a **push-gated** `e2e-sequencer` job (**H4/W14**) | ◐ **in progress** | The job exists and runs on every push to `main`, not on cron and not path-filtered. It has not yet completed a run, so this is **not** claimed green — see below |
 | **SC-E.5** | No skip / `continue-on-error` on demo/e2e (**H2**) | ✅ green | Neither string appears in `ci.yml`, `demo.sh` or `scripts/`. Every prerequisite in the e2e script is a hard `die`. Preflight PF-03 passes |
-| **SC-E.6** | W3 deployed-bytes tests present | ⛔ **not met** | Requires deployed programs |
+| **SC-E.6** | W3 deployed-bytes tests present | ◐ **in progress** | `crates/sdk/tests/multisig_program.rs` drives `artifacts/multisig.bin` — the same binary that gets deployed — through the risc0 executor in CI, happy path and six rejections. What is missing for the full W3 reading is that those bytes are not yet deployed anywhere |
 | **SC-E.7** | Missing `r0vm` → `demo.sh` **fails** (**H2**) | ✅ green | `require r0vm` in the e2e script dies with the install command. PF-03 passes |
 | **SC-E.8** | Docs cite `demo.sh` as the prize demo; `demo-fast.sh` = non-criteria | ✅ green | `demo-fast.sh` states in its banner and header that it generates no proof, touches no sequencer, and is not the prize demo. PF-14 will assert it once `SOLUTION_DRAFT.md` exists |
 
-## Why the CI e2e job is not wired yet
+## The CI e2e job, and why the earlier reasoning was wrong
 
-Wiring `e2e-sequencer` now would make `main` red, and a red default branch is itself a criteria
-failure (**P-S3**). The job goes in when the e2e script passes — not before. That ordering is the
-point: a CI job that is present but failing is not evidence of anything.
+This section used to argue that wiring `e2e-sequencer` before the script passed would make `main`
+red, and that a red default branch is itself a **P-S3** failure — so the job would go in "when the
+e2e script passes, not before".
 
-The `ci.yml` comment block already names the job and what it must do, so its absence is visible
-rather than forgotten.
+That was backwards, and it was holding up **H4**, one of the gates this repository exists to clear.
+The job is what tells you whether the script passes. Keeping it out meant the only thing standing
+between a broken end-to-end path and the submission was running it by hand and remembering to look.
+
+It is wired now, and each run has failed further along than the last — every failure a real defect
+that would otherwise have been found by a reviewer, or on the day:
+
+| Run | Reached | Failed on |
+|-----|---------|-----------|
+| 1 | 12 min — sequencer built | `rzup install rust` missing: no guest toolchain |
+| 2 | 33 min — sequencer live, producing blocks | `libpcsclite` missing, so the LEZ wallet would not build |
+| 3 | 44 min — wallet and SPEL CLI built, two shielded accounts created | our own bug: a Rust process piped into `awk ... exit`, panicking on SIGPIPE and reported as a failure |
+| 4 | running at the time of writing | — |
+
+None of that was visible while the job was unwired.
+
+**SC-E.4 stays ◐ until a run completes.** A job that exists is not a job that passes, and this
+document does not claim otherwise.
 
 ## Where the work actually stands
 
@@ -98,12 +116,13 @@ That last line is P-F1 and P-F2 observable on chain rather than only in a unit t
 
 ## What is still missing for Phase E
 
-`demo.sh` does not yet drive this sequence itself — the lifecycle step in
-`scripts/e2e-local-sequencer.sh` is still unimplemented, so **SC-E.1 and SC-E.4 remain unmet**. The
-steps were run by hand. Turning them into the scripted demo, and only then wiring the CI job, is the
-remaining work.
+`scripts/e2e-local-sequencer.sh` now drives the whole sequence — create, propose, approve at full M,
+execute — and `demo.sh` `exec`s it. What is missing is a **completed** unattended run: **SC-E.1 and
+SC-E.4 remain unmet** until one finishes, in CI or on a clean machine.
 
-Also still missing: a second approval to reach full M, and `execute`.
+Two things were added to the approve step after watching a CI job sit "in progress" for an hour with
+no way to tell proving from hung: it now prints elapsed minutes and the summed `r0vm` RSS every
+minute, and the same silence would have met any reviewer running `./demo.sh`.
 
 ## Exit
 

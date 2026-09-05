@@ -1,8 +1,9 @@
 # Phase D status — SDK / CLI / resume / peer privacy
 
-**Date:** 2026-09-04
+**Date:** 2026-09-04, updated 2026-09-05
 **Plan contract:** `docs/plan/planlp0002.md` §5 Phase D
-**Result:** **all 5 SC green — Phase D complete.**
+**Result:** **all 5 SC green — Phase D complete.** Two things about this phase's deliverables were
+corrected afterwards; see "Corrected after this phase closed".
 
 Abort check at phase start: #125 `reviewDecision` empty; merged LP-0002 PRs → 0. Not aborting.
 
@@ -82,3 +83,32 @@ integration guide says so, and `docs/limitations.md` will carry it. Two specific
 All SC-D green → **proceed to Phase E** (`demo.sh` against a standalone sequencer with
 `RISC0_DEV_MODE=0`, and CI e2e on push — where the PPE composition finally gets demonstrated rather
 than designed).
+
+## Corrected after this phase closed
+
+**The client error catalogue documented four errors that did not exist.** `docs/error-codes.md`
+listed eleven client codes, `2001`–`2011`; `SdkError` has six variants. `2005 AccountNotLive`,
+`2008 SequencerUnreachable`, `2009 SequencerRejected` and `2011 ConfigMismatch` were never
+implemented, and two of them described a sequencer client `pmsig-sdk` does not have — it prepares
+and proves; the caller submits. A member could have waited for a code nothing can raise.
+
+They are retired, and `crates/sdk/tests/error_catalogue.rs` now checks the catalogue against the
+code **in both directions**. The one-directional check was why this survived: `MultisigError`
+asserted every variant it defines is documented, and nothing asserted the reverse or covered
+`SdkError` at all.
+
+`docs/integration.md` had the matching error: step 4 told integrators to "prove it with
+`prove::prove_approval`, then submit". The receipt from `prove_approval` is a standalone membership
+proof, not the privacy-preserving transaction the chain accepts, and the SDK cannot submit anything.
+
+**The CLI put a spending key in the process list.** `pmsig approve --member <hex>` is visible to
+every process on the machine through `ps`, and shells record it in history. Nothing about the
+protocol leaks there — the key never reaches the chain, the store or a log — but for a tool whose
+subject is not revealing which member acted, it deserved an alternative rather than silence.
+`--member-file` reads it from a file; `--member` still works and warns. Recorded in
+[limitations.md §10b](limitations.md).
+
+Also added, and passing: a test that reads the bytes the store actually writes to disk and asserts
+no member's `nsk` is among them. The first version of it was vacuous — `serde_json` renders
+`[u8; 32]` as decimal numbers, so scanning for raw bytes or hex found nothing and passed — which the
+positive control caught.

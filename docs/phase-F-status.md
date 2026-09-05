@@ -54,6 +54,15 @@ So the luck is now an enforced property. `scripts/check-basecamp-privacy.sh` ass
 **Mutation-tested**: injecting `saveHistory("approve_witnessf", …)` into the QML makes the check fail;
 removing it makes the check pass. A gate that has never failed is not a gate.
 
+**Corrected 2026-09-05.** The check began with `if [[ ! -d app ]]; then … exit 0; fi`, which was
+reasonable while Phase F had not run. `app/` is committed now, so its absence means a broken
+checkout — and a privacy check that reports success because it could not run is the skip-to-green
+pattern gate **H2** forbids, and one of the things #125 was pulled up for. It exits non-zero.
+
+Audited at the same time, and clean: the witness reaches the backend as a JSON argument and goes
+straight to the FFI — no `QSettings`, no file, no log — so the red warning the UI shows the member
+("never saved to disk") is accurate rather than aspirational.
+
 Check (4) was a real finding, not a formality — the generated field carried no warning at all. The UI
 now shows: *"⚠ SECRET — this witness contains your nullifier secret key. It never leaves this machine
 except inside a proof, is never saved to disk, and must never be shared."*
