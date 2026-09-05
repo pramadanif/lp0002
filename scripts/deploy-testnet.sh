@@ -120,10 +120,25 @@ wallet_accounts=$("$WALLET" account list 2>&1) \
   || die "the wallet could not list accounts: $wallet_accounts"
 CREATOR=$(printf '%s\n' "$wallet_accounts" | awk '/Public\//{print $2; exit}')
 [[ -n "$CREATOR" ]] || die "the wallet has no public account. Fund one on the testnet first."
-BAL=$(curl -s -X POST "$RPC" -H 'content-type: application/json' \
-  --data "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"getAccountBalance\",\"params\":[\"$CREATOR\"]}" --max-time 20 | jq -r '.result // 0')
+# `account list` prints the id with a `Public/` prefix; the RPC wants the bare base58 and rejects
+# the prefixed form with `InvalidBase58Character('l', 3)` — the l of "Public". fund-testnet.sh has
+# always stripped it; this script did not.
+PAYER_ID=${CREATOR#Public/}
+BAL_RESP=$(curl -s -X POST "$RPC" -H 'content-type: application/json' \
+  --data "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"getAccountBalance\",\"params\":[\"$PAYER_ID\"]}" --max-time 20)
+
+# An RPC error is not a zero balance. `jq -r '.result // 0'` mapped both to 0, so a malformed
+# request reported itself as an unfunded account and sent the operator off to fund a wallet that
+# already held 450 — with the message "human gate", which is the worst possible thing to be wrong
+# about, because it stops the run and blames the human.
+if BAL_ERR=$(printf '%s' "$BAL_RESP" | jq -e -r '.error.message // empty' 2>/dev/null) && [[ -n "$BAL_ERR" ]]; then
+  die "the RPC refused the balance query for $PAYER_ID: $BAL_ERR
+       This is a bad request, not an empty account. Full response: $BAL_RESP"
+fi
+BAL=$(printf '%s' "$BAL_RESP" | jq -r '.result // empty')
+[[ -n "$BAL" ]] || die "the RPC returned no balance for $PAYER_ID. Response: $BAL_RESP"
 info "payer $CREATOR, balance $BAL"
-[[ "$BAL" != "0" && "$BAL" != "null" ]] || die "payer account has zero balance — fund it before deploying (human gate)."
+[[ "$BAL" != "0" ]] || die "payer account $PAYER_ID really is empty. Run ./scripts/fund-testnet.sh"
 
 privates=$(python3 -c "
 import json,sys
