@@ -454,6 +454,83 @@ fn the_program_refuses_a_malformed_witness() {
     );
 }
 
+/// **The program's output must be one LEZ itself will accept.**
+///
+/// Producing a `ProgramOutput` is not enough — the runtime independently re-checks it with
+/// `validate_execution`: unique pre-state account ids, matching pre/post lengths, and the ownership
+/// rules for who may mutate what. A program can look correct in its own tests and still emit
+/// something the chain rejects.
+///
+/// So each instruction's real output is run through LEZ's own validator. This is the check that
+/// distinguishes "our rules are right" from "our program is right *as LEZ will execute it*".
+#[test]
+fn program_output_passes_lez_own_execution_validation() {
+    use lee_core::program::validate_execution;
+
+    let pid = program_id();
+    let tree = member_tree();
+    let config_hash = pmsig_core::config_hash(&tree.root(), 2, 3, &MULTISIG_ID, &pid);
+    let proposal_seed = pmsig_core::proposal_seed(&config_hash, &PROPOSAL_ID);
+
+    // --- create_multisig ---
+    let out = run(
+        vec![
+            account(ProgramId::default(), vec![], public_pda(&pid, &config_hash), false),
+            account(ProgramId::default(), vec![], AccountId::new([0x77; 32]), true),
+        ],
+        &Instruction::CreateMultisig {
+            config_hash,
+            member_root: tree.root(),
+            m: 2,
+            n: 3,
+            multisig_id: MULTISIG_ID,
+            membership_program_id: pid,
+        },
+    )
+    .expect("create_multisig runs");
+    validate_execution(&out.pre_states, &out.post_states, out.self_program_id)
+        .expect("LEZ must accept the output of create_multisig");
+
+    // --- approve, which also emits a chained call ---
+    let cfg = MultisigConfig {
+        version: pmsig_core::STATE_VERSION,
+        member_root: tree.root(),
+        m: 2,
+        n: 3,
+        multisig_id: MULTISIG_ID,
+        membership_program_id: pid,
+        proposal_count: 0,
+    };
+    let prop = Proposal {
+        version: pmsig_core::STATE_VERSION,
+        config_hash,
+        proposal_id: PROPOSAL_ID,
+        action: pmsig_multisig_core::ProposedAction::TreasuryTransfer {
+            recipient: RECIPIENT,
+            amount: 1000,
+        },
+        nullifiers: Vec::new(),
+        executed: false,
+    };
+    let out = run(
+        vec![
+            account(pid, borsh::to_vec(&cfg).unwrap(), public_pda(&pid, &config_hash), false),
+            account(pid, borsh::to_vec(&prop).unwrap(), public_pda(&pid, &proposal_seed), false),
+            account(ProgramId::default(), vec![], AccountId::new([0x55; 32]), true),
+        ],
+        &Instruction::Approve {
+            config_hash,
+            proposal_seed,
+            member_root: tree.root(),
+            claimed_nullifier: approval_nullifier(&ALICE, &MULTISIG_ID, &PROPOSAL_ID),
+            witness: witness_bytes(&ALICE, 0),
+        },
+    )
+    .expect("approve runs");
+    validate_execution(&out.pre_states, &out.post_states, out.self_program_id)
+        .expect("LEZ must accept the output of approve");
+}
+
 /// Sanity: the receipt type is in scope, so this file compiles against the same risc0 the SDK uses.
 #[allow(dead_code)]
 fn _type_anchor(_: Receipt) {}

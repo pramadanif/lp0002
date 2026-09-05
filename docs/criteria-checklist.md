@@ -52,7 +52,7 @@ Status: ✅ evidence exists · ◐ partial · ⛔ not met
 | **P-S1** | Deployed and tested on LEZ devnet/testnet | ⛔ | Local standalone sequencer only |
 | **P-S2** | E2E tests against a LEZ sequencer (**standalone**) in CI | ⛔ | `scripts/e2e-local-sequencer.sh` drives a real standalone sequencer, but the full script has **not yet completed a run**, so the CI job is deliberately not wired — a failing job is not evidence |
 | **P-S3** | CI green on the default branch | ✅ | GitHub Actions green on `main`: `fmt + clippy + tests`, `shellcheck`, `RISC0_DEV_MODE clobber check` |
-| **P-S4** | README documents E2E usage: deploy steps, addresses, CLI **and** Basecamp | ◐ | README covers build, status and pins honestly. Missing: deploy steps, program addresses, Basecamp walkthrough |
+| **P-S4** | README documents E2E usage: deploy steps, addresses, CLI **and** Basecamp | ◐ | README now has an end-to-end section: prerequisites (incl. the ~9 GB memory requirement), guest build, demo, testnet deploy, public verification, CLI and Basecamp walkthroughs. **Program addresses are still absent** because nothing is deployed to public testnet — stated rather than faked |
 | **P-S5** | Reproducible `demo.sh` against a **real local sequencer** with `RISC0_DEV_MODE=0` | ◐ | `demo.sh` exists and drives a genuine standalone sequencer with `RISC0_DEV_MODE=0`; the sequencer, deployment, create, propose and one anonymous approval have all been demonstrated. **The script has not yet completed a full unattended run**, so this is not claimed green |
 | **P-S6** | Narrated video showing terminal output incl. proof generation, confirming `RISC0_DEV_MODE=0` | ⛔ | Not recorded. **Human gate** — see `docs/limitations.md` |
 

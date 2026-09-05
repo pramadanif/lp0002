@@ -110,6 +110,114 @@ produces report `PENDING`, and pending is never treated as a pass.
 There is no `demo.sh` yet. When it lands (Phase E) it will drive a **real standalone LEZ sequencer**
 with `RISC0_DEV_MODE=0`, and it will fail — not skip — if a required tool is missing.
 
+## End-to-end usage
+
+Criterion **P-S4**. Every command below is real; where something has not been demonstrated yet, it
+says so rather than reading as if it had.
+
+### Prerequisites
+
+```bash
+# Rust (the repo pins 1.94.0 to match logos-execution-zone v0.2.4)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# risc0 — the prover. Without it nothing on the submission path will run, by design.
+curl -L https://risczero.com/install | bash && rzup install
+```
+
+**Memory matters more than CPU.** A composed approval proof peaks at ~8.7 GB and needs roughly
+**9 GB free**. On a loaded machine it swaps and appears to hang — that is the single most common way
+a run "fails". Close your browser first.
+
+### 1. Build the guests
+
+```bash
+./scripts/build-guests.sh            # local toolchain, development
+./scripts/build-guests.sh --docker   # reproducible; REQUIRED for anything deployed
+```
+
+Writes `artifacts/{membership,multisig}.bin` and regenerates `artifacts/IMAGE_IDS.md` with each
+binary's ImageID — which **is** its on-chain `ProgramId`.
+
+### 2. Run the demo
+
+```bash
+./demo.sh
+```
+
+Starts a real standalone LEZ sequencer, deploys both programs, and drives
+create → propose → approve ×2 → execute with `RISC0_DEV_MODE=0`. Budget ~45 minutes: each approval is
+a real recursive proof.
+
+> **Status:** every step has been demonstrated individually — sequencer, deployment, create, propose,
+> and an anonymous approval confirmed on chain — but `demo.sh` has **not yet completed an unattended
+> run end to end**. See [`docs/phase-E-status.md`](docs/phase-E-status.md).
+
+`demo-fast.sh` is a development tour. It generates no proof and is not the prize demo.
+
+### 3. Deploy to the public testnet
+
+```bash
+./scripts/fund-testnet.sh                       # Piñata faucet — no human gate
+LEE_WALLET_HOME_DIR=.e2e/wallet-testnet ./scripts/deploy-testnet.sh
+```
+
+`fund-testnet.sh` is verified: it initialises an account and claims from LEZ's proof-of-work faucet
+(balance 0 → 150 → 300, blocks 38138/38139/38148).
+
+`deploy-testnet.sh` refuses to run against a local node, refuses to deploy a non-reproducible build,
+and writes `docs/DEPLOYMENT.md` with explorer links, then verifies them.
+
+> **Status:** not yet run. There are no public-testnet program addresses to publish, so this README
+> lists none.
+
+### 4. Verify from public data alone
+
+```bash
+./scripts/verify-onchain.sh          # reads docs/DEPLOYMENT.md
+./scripts/check-explorer-links.sh    # every evidence URL must resolve
+```
+
+`verify-onchain.sh` needs no secrets and no local state: it checks the config account is owned by the
+program, rehashes to its own address, names the deployed verifier, that the threshold was met at full
+M with distinct nullifiers, that the proposal executed — and that at least one published transaction
+is genuinely `PrivacyPreserving`.
+
+### 5. The CLI
+
+```bash
+cargo run -p pmsig-cli --bin pmsig -- --help
+
+pmsig create   --members <nsk,nsk,nsk> --m 2
+pmsig propose  --proposal-id <hex> --recipient <hex> --amount 1000
+pmsig approve  --proposal-id <hex> --member <nsk>
+pmsig execute  --proposal-id <hex>
+pmsig status   --proposal-id <hex>
+```
+
+`status` prints a count and the nullifiers — never who approved.
+
+> **Two limits, stated plainly:** the CLI runs against a local state file (every command prints
+> `[local]`), and `create` takes every member's secret key so one machine can play several members in
+> a demo. A real deployment never does that: each member derives their own npk, shares only that, and
+> keeps their own authentication path.
+
+### 6. The Basecamp app
+
+```bash
+./scripts/build-basecamp.sh --regen   # regenerate the module from the IDL
+./scripts/build-basecamp.sh           # build the Qt plugin and package the .lgx
+```
+
+Needs Qt6, CMake and the [`lgx`](https://github.com/logos-co/logos-package) tool. The script fails
+with install instructions rather than skipping — a build that did not happen is not a loadable
+module.
+
+> **Status:** the module is generated from the IDL and hardened (the approval witness is never
+> written to disk — `scripts/check-basecamp-privacy.sh` enforces it, and CI runs that check). The
+> `.lgx` is **not built**: the toolchain is not installed here.
+
+
 ## Repository layout
 
 ```
