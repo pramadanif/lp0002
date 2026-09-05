@@ -21,6 +21,8 @@ lee_core = { workspace = true, features = ["host"] }
 
 [dev-dependencies]
 hex.workspace = true
+# Only to recompute a committed binary's ImageID in tests/image_ids_match_binaries.rs.
+risc0-binfmt = "3.0.5"
 pmsig-store.workspace = true
 serde_json.workspace = true
 borsh.workspace = true

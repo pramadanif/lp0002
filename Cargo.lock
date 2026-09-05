@@ -2157,6 +2157,7 @@ dependencies = [
  "pmsig-membership-core",
  "pmsig-multisig-core",
  "pmsig-store",
+ "risc0-binfmt",
  "risc0-zkvm",
  "serde_json",
  "thiserror",
