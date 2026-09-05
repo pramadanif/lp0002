@@ -201,11 +201,32 @@ mod negatives {
         assert!(cycles > 0);
     }
 
+    /// Asserts the guest rejected for the **stated reason**, not merely that it rejected.
+    ///
+    /// `verify_approval` runs three checks in order — account binding, membership, nullifier — and
+    /// each mutation below is meant to trip exactly one of them. Asserting only `is_err()` cannot
+    /// tell "the nullifier check caught it" from "an earlier check happened to catch it too", so a
+    /// check could be deleted while its own test kept passing on the strength of another.
+    #[track_caller]
+    fn assert_rejected_because(result: &Result<u64, String>, reason: &str) {
+        let err = result
+            .as_ref()
+            .err()
+            .unwrap_or_else(|| panic!("expected the guest to reject ({reason}), but it accepted"));
+        assert!(
+            err.contains(reason),
+            "expected rejection because `{reason}`, got: {err}"
+        );
+    }
+
     #[test]
     fn a_wrong_member_root_is_rejected() {
         let (mut c, w, pre) = alice_approves();
         c.member_root = [0xFF; 32];
-        assert!(run(&c, &w, &pre).is_err());
+        assert_rejected_because(
+            &run(&c, &w, &pre),
+            "approver is not a member of this multisig",
+        );
     }
 
     #[test]
@@ -213,14 +234,20 @@ mod negatives {
         let (mut c, w, pre) = alice_approves();
         // The claimed nullifier no longer matches the proposal it names.
         c.proposal_id = [0xC3; 32];
-        assert!(run(&c, &w, &pre).is_err());
+        assert_rejected_because(
+            &run(&c, &w, &pre),
+            "claimed nullifier does not match the witness",
+        );
     }
 
     #[test]
     fn a_forged_nullifier_is_rejected() {
         let (mut c, w, pre) = alice_approves();
         c.claimed_nullifier = [0xAB; 32];
-        assert!(run(&c, &w, &pre).is_err());
+        assert_rejected_because(
+            &run(&c, &w, &pre),
+            "claimed nullifier does not match the witness",
+        );
     }
 
     #[test]
@@ -235,7 +262,10 @@ mod negatives {
             true,
             account_id,
         )];
-        assert!(run(&c, &w, &pre).is_err());
+        assert_rejected_because(
+            &run(&c, &w, &pre),
+            "approver is not a member of this multisig",
+        );
     }
 
     /// H8 in the guest: a witness that does not control the presented account is rejected.
@@ -248,9 +278,9 @@ mod negatives {
             true,
             unrelated,
         )];
-        assert!(
-            run(&c, &w, &pre).is_err(),
-            "H8 REGRESSION: the guest accepted a witness that does not control the account"
+        assert_rejected_because(
+            &run(&c, &w, &pre),
+            "witness does not control the approving account",
         );
     }
 
@@ -260,7 +290,10 @@ mod negatives {
         // Alice's identifier-1 address, while the witness claims identifier 0.
         let other = derive_account_id(&npk_of(&ALICE_NSK), &vpk(), 1);
         let pre = vec![AccountWithMetadata::new(Account::default(), true, other)];
-        assert!(run(&c, &w, &pre).is_err());
+        assert_rejected_because(
+            &run(&c, &w, &pre),
+            "witness does not control the approving account",
+        );
     }
 
     #[test]

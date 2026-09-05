@@ -232,3 +232,81 @@ fn writes_leave_no_partial_file_behind() {
         1
     );
 }
+
+/// **Privacy regression.** The store is the one place a member's own client writes approval state
+/// to disk, and it is written by the machine that *has* the member's `nsk`. Nothing in the record
+/// type should carry that key — the nullifier is a preimage-hiding hash of it — but "should" is not
+/// a test. This inspects what is actually on disk.
+///
+/// The other privacy tests cover what reaches the chain (`peer_privacy.rs`) and what `Debug`
+/// prints; neither would notice a secret written to a local file. A leak here would be quieter and,
+/// for a member whose laptop is backed up or shared, no less real.
+///
+/// Parsed rather than grepped: `serde_json` renders `[u8; 32]` as an array of decimal numbers, so
+/// scanning the text for raw bytes or a hex spelling finds nothing and passes for the wrong reason.
+/// The first version of this test did exactly that — the positive control at the end is what caught
+/// it, and it stays for that reason.
+#[test]
+fn nothing_written_to_disk_contains_a_member_secret() {
+    /// Every 32-byte value the document holds, however nested: `[u8; 32]` arrives as an array of
+    /// numbers, and a hex string would arrive as a string.
+    fn collect(v: &serde_json::Value, out: &mut Vec<Vec<u8>>) {
+        match v {
+            serde_json::Value::Array(items) => {
+                let bytes: Option<Vec<u8>> = items
+                    .iter()
+                    .map(|i| i.as_u64().and_then(|n| u8::try_from(n).ok()))
+                    .collect();
+                if let Some(b) = bytes {
+                    out.push(b);
+                }
+                for i in items {
+                    collect(i, out);
+                }
+            }
+            serde_json::Value::Object(map) => {
+                for (_, i) in map {
+                    collect(i, out);
+                }
+            }
+            serde_json::Value::String(s) => {
+                if let Ok(b) = hex::decode(s) {
+                    out.push(b);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let dir = TempDir::new("no-secrets");
+    let store = ApprovalStore::new(&dir.0);
+    for (nsk, status) in [
+        (&ALICE, ApprovalStatus::Pending),
+        (&BOB, ApprovalStatus::Confirmed),
+    ] {
+        store.record(&approval(nsk, status)).unwrap();
+    }
+
+    let bytes = std::fs::read(store.path()).expect("the store file must exist after recording");
+    let doc: serde_json::Value =
+        serde_json::from_slice(&bytes).expect("the store writes valid JSON");
+    let mut values = Vec::new();
+    collect(&doc, &mut values);
+
+    for (name, nsk) in [("ALICE", &ALICE), ("BOB", &BOB)] {
+        assert!(
+            !values.iter().any(|v| v.as_slice() == nsk.as_slice()),
+            "{name}'s nsk is on disk in {}",
+            store.path().display()
+        );
+    }
+
+    // Positive control: the derived nullifier *is* there. Without this the test above would pass
+    // just as happily on an empty file, or on a document this walker failed to parse.
+    let nf = approval_nullifier(&ALICE, &MULTISIG, &PROPOSAL);
+    assert!(
+        values.iter().any(|v| v.as_slice() == nf.as_slice()),
+        "expected Alice's nullifier on disk; the walker found {} values",
+        values.len()
+    );
+}
