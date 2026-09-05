@@ -79,8 +79,14 @@ enum Command {
         #[arg(long)]
         proposal_id: String,
         /// The approving member's secret key, hex.
-        #[arg(long)]
-        member: String,
+        ///
+        /// **Prefer `--member-file`.** A key passed here is visible to every other process on the
+        /// machine through the process list, and lands in shell history.
+        #[arg(long, conflicts_with = "member_file")]
+        member: Option<String>,
+        /// Read the approving member's secret key from a file instead of the command line.
+        #[arg(long, conflicts_with = "member")]
+        member_file: Option<std::path::PathBuf>,
     },
     /// Execute a proposal once the threshold is met.
     Execute {
@@ -125,7 +131,8 @@ fn run() -> Result<()> {
         Command::Approve {
             proposal_id,
             member,
-        } => approve(&cli, proposal_id, member),
+            member_file,
+        } => approve(&cli, proposal_id, member.as_deref(), member_file.as_deref()),
         Command::Execute { proposal_id } => execute(&cli, proposal_id),
         Command::Status { proposal_id } => status(&cli, proposal_id.as_deref()),
     }
@@ -218,11 +225,40 @@ fn propose(cli: &Cli, proposal_id: &str, recipient: &str, amount: u128) -> Resul
     Ok(())
 }
 
-fn approve(cli: &Cli, proposal_id: &str, member: &str) -> Result<()> {
+/// Reads the approving member's secret key.
+///
+/// A spending key on the command line is readable by any other process on the machine — `ps` shows
+/// the full argument list — and is written to shell history. That is a poor fit for a tool whose
+/// whole subject is not revealing which member acted, so `--member-file` exists and `--member`
+/// says plainly what it costs.
+fn member_key(member: Option<&str>, member_file: Option<&std::path::Path>) -> Result<Digest32> {
+    match (member, member_file) {
+        (_, Some(path)) => {
+            let text = std::fs::read_to_string(path)
+                .with_context(|| format!("reading the member key from {}", path.display()))?;
+            parse32("member key", text.trim())
+        }
+        (Some(hex), None) => {
+            eprintln!(
+                "warning: --member puts a spending key in the process list and your shell \
+                 history. Use --member-file for anything you care about."
+            );
+            parse32("member key", hex)
+        }
+        (None, None) => bail!("pass --member-file (preferred) or --member"),
+    }
+}
+
+fn approve(
+    cli: &Cli,
+    proposal_id: &str,
+    member: Option<&str>,
+    member_file: Option<&std::path::Path>,
+) -> Result<()> {
     let mut st = LocalState::load(&cli.state)?;
     let (config, config_hash) = loaded_config(&st)?;
     let pid = parse32("proposal-id", proposal_id)?;
-    let nsk = parse32("member key", member)?;
+    let nsk = member_key(member, member_file)?;
 
     let proposal = st
         .proposal_mut(&pid)

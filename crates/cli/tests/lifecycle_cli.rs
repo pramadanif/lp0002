@@ -264,3 +264,62 @@ fn help_and_version_work() {
     assert!(pmsig(&dir.0, &["--help"]).ok);
     assert!(pmsig(&dir.0, &["--version"]).ok);
 }
+
+/// A member's spending key must have a way in that does not put it in the process list.
+///
+/// `--member` is convenient and the demo uses it, but `ps` shows the full argument list to every
+/// other process on the machine, and shells record it in history. For a tool whose whole subject is
+/// not revealing which member acted, that deserved an alternative rather than a footnote.
+#[test]
+fn the_member_key_can_be_given_without_putting_it_in_the_process_list() {
+    let dir = TempDir::new("member-file");
+    create_2_of_3(&dir.0);
+    propose(&dir.0, P1);
+
+    let key_path = dir.0.join("alice.key");
+    std::fs::write(&key_path, format!("{A}\n")).expect("write key file");
+
+    let out = pmsig(
+        &dir.0,
+        &[
+            "approve",
+            "--proposal-id",
+            P1,
+            "--member-file",
+            key_path.to_str().unwrap(),
+        ],
+    );
+    assert!(out.ok, "--member-file must work: {}", out.text);
+    assert!(
+        !out.text.contains(A),
+        "the key must never be echoed back: {}",
+        out.text
+    );
+
+    // Passing the key inline still works — the demo relies on it — but says what it costs.
+    let dir2 = TempDir::new("member-inline");
+    create_2_of_3(&dir2.0);
+    propose(&dir2.0, P1);
+    let inline = pmsig(&dir2.0, &["approve", "--proposal-id", P1, "--member", A]);
+    assert!(inline.ok, "--member must still work: {}", inline.text);
+    assert!(
+        inline.text.contains("process list"),
+        "--member must warn that it exposes the key: {}",
+        inline.text
+    );
+
+    // The two are mutually exclusive, so no script can pass both and be left guessing which won.
+    let both = pmsig(
+        &dir.0,
+        &[
+            "approve",
+            "--proposal-id",
+            P1,
+            "--member",
+            A,
+            "--member-file",
+            key_path.to_str().unwrap(),
+        ],
+    );
+    assert!(!both.ok, "--member and --member-file must conflict");
+}

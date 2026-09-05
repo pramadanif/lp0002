@@ -115,6 +115,18 @@ Evidence: `artifacts/phase-E-ppe-approve-SUCCESS.txt`.
   of a fresh process — what a member actually experiences — but it is unexplained and is recorded
   rather than smoothed over.
 
+## 10b. A spending key on the command line
+
+`pmsig approve --member <hex>` puts a member's nullifier secret key in the process's argument list,
+where `ps` shows it to every other process on the machine, and where the shell records it in
+history. Nothing about the protocol leaks there — the key never reaches the chain, the store or a
+log — but the machine running the client is not a private place, and for a tool about not revealing
+which member acted that is worth stating rather than assuming.
+
+`--member-file` reads the key from a file instead and is the better default; `--member` still works
+and warns. Neither is a substitute for a real key store, which this client does not have: it is a
+local demo tool, marked `[local]` on every command, not a wallet.
+
 ## 11. Build reproducibility
 
 `artifacts/IMAGE_IDS.md` currently records a **local** build and says so in the file. A deployed or
