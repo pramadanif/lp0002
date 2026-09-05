@@ -28,6 +28,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_pda = public_pda(&multisig_pid, &config_hash);
     let proposal_pda = public_pda(&multisig_pid, &proposal_seed);
 
+    // A verifier that will not say which addresses it checked cannot be checked itself. These are
+    // also the addresses an operator needs — the config PDA is the multisig's own treasury under
+    // INV-7, so it is the account that has to hold the funds a proposal spends.
+    println!("  config PDA   : {config_pda}");
+    println!("  proposal PDA : {proposal_pda}");
+
     let fail = |m: String| -> Result<(), Box<dyn std::error::Error>> { Err(m.into()) };
 
     // ---- config account ----
