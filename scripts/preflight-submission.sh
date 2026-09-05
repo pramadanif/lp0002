@@ -120,8 +120,11 @@ if [[ ! -s $CHK ]]; then
   pend "PF-07" "docs/criteria-checklist.md not written yet (Phase H)"
 else
   missing=""
+  # Each id must appear in a TABLE ROW, not merely somewhere in the file: a criterion mentioned only
+  # in prose is not a covered criterion, and a bare file-wide grep would count it as one. The
+  # trailing character class keeps `P-F1` from being satisfied by a hypothetical `P-F10`.
   for id in P-F1 P-F2 P-F3 P-F4 P-F5 P-F6 P-F7 P-F8 P-U1 P-U2 P-U3 P-R1 P-R2 P-R3 P-P1 P-S1 P-S2 P-S3 P-S4 P-S5 P-S6; do
-    grep -q "$id" "$CHK" || missing="$missing $id"
+    grep -qE "^\|.*${id}([^0-9A-Za-z]|\$)" "$CHK" || missing="$missing $id"
   done
   if [[ -z "$missing" ]]; then ok "PF-07" "criteria-checklist covers all 21 prize criteria"
   else bad "PF-07" "criteria-checklist missing:$missing"; fi
@@ -192,8 +195,17 @@ fi
 # PF-12 — narrated video link + transcript
 vid_src=""
 [[ -f docs/SOLUTION_DRAFT.md ]] && vid_src=docs/SOLUTION_DRAFT.md
-if [[ -n "$vid_src" ]] && grep -qE 'https?://' "$vid_src" && grep -qiE 'video' "$vid_src" && [[ -s docs/video-transcript.md ]]; then
-  ok "PF-12" "video URL present in SOLUTION_DRAFT and docs/video-transcript.md exists"
+# The URL and the word "video" must be on the SAME line, and that line must not be one denying a
+# video exists. Three independent file-wide greps used to stand here, and they passed on a document
+# whose only occurrence of "video" was the sentence "**No narrated video.** P-S6 unmet." — the gate
+# guarding the video requirement was satisfied by the statement that the video did not exist.
+vid_line=""
+if [[ -n "$vid_src" ]]; then
+  vid_line=$(grep -iE 'video' "$vid_src" | grep -E 'https?://' \
+             | grep -viE '\bno\b|not |unmet|missing|todo|placeholder|tbd|pending' | head -1)
+fi
+if [[ -n "$vid_line" ]] && [[ -s docs/video-transcript.md ]]; then
+  ok "PF-12" "narrated video URL present in SOLUTION_DRAFT and docs/video-transcript.md exists"
 else
   pend "PF-12" "narrated video URL + docs/video-transcript.md not in place yet (Phase H, human gate)"
 fi
