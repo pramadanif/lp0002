@@ -58,6 +58,17 @@ Status: ✅ evidence exists · ◐ partial · ⛔ not met
 
 ---
 
+## Cross-check against actual rejections
+
+[`reviewer-gaps.md`](reviewer-gaps.md) reads all nine closed LP-0002 submissions and the three
+accepted ones. Three causes account for nearly every rejection: **CI not running a real LEZ sequencer
+(6×)**, **missing or dead testnet evidence (5×)**, and **missing CU cost (5×)**. Our two ⛔ rows on
+CI and testnet are exactly those, and are the right place to spend remaining effort.
+
+Causes that killed others and are already closed here: derivation-only binding (#91), dev-mode
+clobber in a child script (#97), and no partial-approval resume (#91) — all three mutation-tested
+rather than merely implemented.
+
 ## Summary
 
 | | Count |

@@ -31,6 +31,24 @@ The precise on-chain claim, stated so a reviewer can check it rather than take i
   PDA seed. Lowering M, substituting the member set, or naming a permissive verifier does not weaken
   the multisig — it names one that does not exist.
 
+## Why `execute` carries no proof
+
+Answering this up front, because a previous submission to this prize was closed partly for *"the
+execute transaction contains no proof"*.
+
+The proof is at **approve** time. Each approval is a privacy-preserving transaction whose validity
+depends on LEZ's circuit verifying the multisig program **and** the chained membership program. By
+the time `execute` runs, the threshold is already a fact on chain: a set of distinct, proof-backed
+nullifiers.
+
+`execute` reads that verified state and moves funds if `count >= M`. It takes no secret input and
+asserts nothing that was not already proven, so there is nothing left for a proof to establish.
+
+**Keeping it public is deliberate, and better for privacy.** Anyone may execute a proposal that has
+reached its threshold — including a non-member. If execution required a member, the executor *would
+be* a member, and that would link a member to the proposal. A permissionless execute is what makes
+criterion **P-F4** — execution unlinkable to any individual member — achievable at all.
+
 ## Architecture
 
 ```
