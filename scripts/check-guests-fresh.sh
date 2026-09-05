@@ -27,6 +27,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.." || { echo "cannot cd to repo root" >&2; exit 1; }
 
+# Guard against being invoked through a copy outside the tree: `dirname $0/..` would then land
+# somewhere unrelated, every binary would look "missing", and the gate would fail for the wrong
+# reason. (This happened while testing this very script from /tmp.)
+[[ -f scripts/build-guests.sh && -d .git ]] || {
+  echo "FATAL: not at the repo root (got $PWD). Run this as ./scripts/check-guests-fresh.sh" >&2
+  exit 2
+}
+
 # "<binary>|<space-separated source paths>"
 GUESTS=(
   "artifacts/multisig.bin|programs/multisig-spel crates/core crates/membership-core crates/multisig-core"
