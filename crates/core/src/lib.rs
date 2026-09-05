@@ -297,6 +297,40 @@ mod tests {
         assert_ne!(prop, nf);
     }
 
+    /// **Merkle second-preimage resistance.** A leaf and an internal node are both SHA-256 over
+    /// exactly 64 bytes, so nothing about their *shape* keeps them apart. What keeps them apart is
+    /// the domain tag, and this pins the argument rather than leaving it in a comment.
+    ///
+    /// The identity below is the whole of it: a leaf simply *is* an internal node whose left child
+    /// is the fixed constant `DS_LEAF`. So passing an internal node off as a leaf — the classic
+    /// attack, which would let a prover treat a subtree hash as a member — requires producing a
+    /// node whose value equals `DS_LEAF`, i.e. a SHA-256 preimage of a fixed constant.
+    ///
+    /// It also means the tag must never be something a subtree could produce, which is why
+    /// `DS_LEAF` is a hash of a labelled string and not, say, zero.
+    #[test]
+    fn a_leaf_is_a_pair_hash_under_a_tag_no_subtree_can_forge() {
+        let npk: Digest32 = [0x42; 32];
+        assert_eq!(
+            member_leaf(&npk),
+            crate::sha256_pair(&DS_LEAF, &npk),
+            "member_leaf must be exactly SHA256(DS_LEAF || npk) — the separation rests on this"
+        );
+
+        // An internal node over two real leaves is not itself a leaf of anything cheap to find.
+        let a = member_leaf(&[0x01; 32]);
+        let b = member_leaf(&[0x02; 32]);
+        let internal = crate::sha256_pair(&a, &b);
+        assert_ne!(internal, member_leaf(&a));
+        assert_ne!(internal, member_leaf(&b));
+
+        // And the tag is not a value a subtree hash could plausibly land on: it is a hash of a
+        // label, not a low-entropy constant.
+        assert_ne!(DS_LEAF, [0_u8; 32]);
+        assert_ne!(DS_LEAF, a);
+        assert_ne!(DS_LEAF, internal);
+    }
+
     #[test]
     fn sha256_matches_a_known_vector() {
         // SHA-256 of the empty string — guards against the hash impl changing underneath us.
