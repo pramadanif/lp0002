@@ -475,8 +475,18 @@ fn program_output_passes_lez_own_execution_validation() {
     // --- create_multisig ---
     let out = run(
         vec![
-            account(ProgramId::default(), vec![], public_pda(&pid, &config_hash), false),
-            account(ProgramId::default(), vec![], AccountId::new([0x77; 32]), true),
+            account(
+                ProgramId::default(),
+                vec![],
+                public_pda(&pid, &config_hash),
+                false,
+            ),
+            account(
+                ProgramId::default(),
+                vec![],
+                AccountId::new([0x77; 32]),
+                true,
+            ),
         ],
         &Instruction::CreateMultisig {
             config_hash,
@@ -514,9 +524,24 @@ fn program_output_passes_lez_own_execution_validation() {
     };
     let out = run(
         vec![
-            account(pid, borsh::to_vec(&cfg).unwrap(), public_pda(&pid, &config_hash), false),
-            account(pid, borsh::to_vec(&prop).unwrap(), public_pda(&pid, &proposal_seed), false),
-            account(ProgramId::default(), vec![], AccountId::new([0x55; 32]), true),
+            account(
+                pid,
+                borsh::to_vec(&cfg).unwrap(),
+                public_pda(&pid, &config_hash),
+                false,
+            ),
+            account(
+                pid,
+                borsh::to_vec(&prop).unwrap(),
+                public_pda(&pid, &proposal_seed),
+                false,
+            ),
+            account(
+                ProgramId::default(),
+                vec![],
+                AccountId::new([0x55; 32]),
+                true,
+            ),
         ],
         &Instruction::Approve {
             config_hash,
