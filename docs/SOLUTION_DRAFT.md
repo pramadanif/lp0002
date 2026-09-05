@@ -118,10 +118,8 @@ as evidence anywhere.
 Listed first-class, because the difference between built and demonstrated is what this prize's gates
 test:
 
-- **Nothing is on the public testnet.** Funding was obtained once from the proof-of-work faucet
-  (balance 300, txs in blocks 38138/38139/38148), but that wallet lived under a gitignored directory
-  and no longer exists on the build machine; `fund-testnet.sh` creates and funds a fresh one
-  unattended, so this is a step to redo rather than a blocker. The programs are not deployed. P-F6, P-F7, P-S1 and the
+- **Nothing is on the public testnet.** The wallet is connected and funded (balance 450, topped up
+  by the proof-of-work faucet with no human gate), but the programs are not deployed there. P-F6, P-F7, P-S1 and the
   on-chain CU figures for P-P1 are therefore unmet.
 - **`demo.sh` has not completed an unattended end-to-end run.** Every step has been demonstrated —
   sequencer, deployment, create, propose, an anonymous approval — but by hand. P-S5 is not claimed.

@@ -162,8 +162,9 @@ this prize's evidence gates:
   account holds one approval and one nullifier matching the client's computation, with no member
   identity. What remains undemonstrated is `execute` at full M, which needs a second approval from a
   second shielded account.
-- **The multisig on the public testnet.** Funding was obtained once (`./scripts/fund-testnet.sh`,
-  balance 300, txs in blocks 38138/38139/38148). The wallet that held it lived under `.e2e/`, which is gitignored and was cleaned when a leaked key was purged from history, so **that balance is no longer reachable from this machine** — no `wallet_config.json` exists anywhere under `$HOME`. It is recoverable without a human: `fund-testnet.sh` creates a wallet when none is present and the Piñata faucet is proof-of-work, so a fresh funded account is obtainable unattended. Recorded because "funded" reads as an asset in hand, and it is not one.
+- **The multisig on the public testnet.** The wallet is funded: balance **450** on
+  `https://testnet.lez.logos.co`, topped up from 300 by `./scripts/fund-testnet.sh` (Piñata
+  proof-of-work faucet, no human gate). Wallet home is `.e2e/wallet-testnet`.
   **The programs are
   not deployed there yet** and no multisig exists on it. Everything demonstrated so far is on a local
   standalone sequencer. `docs/DEPLOYMENT.md` and the on-chain CU figures in

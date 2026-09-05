@@ -44,7 +44,7 @@
 | ~~U-6~~ | — | **RESOLVED.** It can; `--bin-<NAME>` resolves the ChainedCall dependency |
 | ~~Recursive composition cost unmeasured~~ | — | **MEASURED.** ≈19 min 26 s, peak 8.74 GB, needs ~9 GB free RAM |
 | Verifier change rotates every `config_hash` | Phase H (limitations) | Consequence of ADR-002 |
-| Funded testnet wallet no longer on this machine | Phase G | It lived under `.e2e/`, gitignored and cleaned when a leaked key was purged. `fund-testnet.sh` creates a wallet when absent and the faucet is proof-of-work, so this is recoverable unattended — but the recorded balance of 300 is not an asset in hand |
+| ~~Funded testnet wallet lost~~ | — | **WRONG — retracted 2026-09-05.** I claimed the wallet was gone after searching `find ~ -maxdepth 3 -name wallet_config.json`, which cannot reach `.e2e/wallet-testnet/wallet_config.json` at depth 6. The wallet was there the whole time and is funded (450). Only `.e2e/lez` and `.e2e/spel` — build outputs — were missing |
 | **Both** programs must be redeployed before any evidence is pinned | Phase G | `artifacts/phase-E-*.txt` records ImageIDs `821c23d9…` (membership) and `cee07cd3…` (multisig). Neither matches `artifacts/IMAGE_IDS.md` today (`f5cc9f37…`, `94bc1426…`). On LEZ the ImageID *is* the ProgramId, so **every** recorded on-chain result is for a superseded binary, and `config_hash` — which commits to the membership program id (ADR-002) — changes with it, moving every multisig address. An earlier version of this row said the membership ImageID was unchanged; that was true only of the INV-7 rebuild on 2026-09-05, not of the Phase E evidence, and reading it as "the membership evidence still stands" would have been wrong |
 
 ## Phase ledger
