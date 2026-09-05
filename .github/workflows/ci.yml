@@ -8,6 +8,8 @@ on:
 
 # No `continue-on-error` and no conditional skips anywhere in this file. Plan gate H2: a job that
 # cannot do its work must fail, never pass silently.
+# Fast jobs: a newer push makes an older run pointless, so cancel it. The e2e job overrides this
+# below — see the note there.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -73,6 +75,14 @@ jobs:
   e2e-sequencer:
     name: e2e against a real standalone LEZ sequencer
     runs-on: ubuntu-latest
+    # Opted out of the workflow-level cancel. This job builds LEZ and SPEL and then generates real
+    # proofs, so it runs for the better part of an hour; under `cancel-in-progress` every push
+    # killed it (the first run died at 13 minutes) and it could never finish during a working
+    # session. Its own group instead: runs queue behind each other rather than cancelling, so one
+    # always completes.
+    concurrency:
+      group: e2e-${{ github.ref }}
+      cancel-in-progress: false
     # A real proof on a 4-core runner is far slower than the ~19 min measured on an 8-core laptop.
     # Generous, but still well under GitHub's 6 h ceiling, so a hang fails rather than hanging.
     timeout-minutes: 300
