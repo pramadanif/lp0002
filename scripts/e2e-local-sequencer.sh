@@ -35,6 +35,44 @@ log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
 die()  { printf '\n\033[1;31mFATAL: %s\033[0m\n' "$*" >&2; exit 1; }
 
+# Free memory in GB, or empty when it cannot be determined.
+#
+# Not decoration. A composed approval peaks near 9 GB (docs/cu-costs.md); below that the prover does
+# not fail, it swaps — and the first attempt at this ran for hours before anyone worked out that
+# Chrome and two editors were holding the memory. Hours of thrashing look exactly like slow proving,
+# which is the worst failure mode there is: it wastes the time and teaches you nothing.
+free_gb() {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    vm_stat 2>/dev/null | awk '
+      /page size of/ {ps=$8}
+      /Pages free/        {gsub(/\./,"",$3); f=$3}
+      /Pages inactive/    {gsub(/\./,"",$3); i=$3}
+      /Pages speculative/ {gsub(/\./,"",$3); s=$3}
+      END {if (ps>0) printf "%.1f", (f+i+s)*ps/1073741824}'
+  else
+    awk '/MemAvailable/ {printf "%.1f", $2/1048576}' /proc/meminfo 2>/dev/null
+  fi
+}
+
+# Refuses to start a ~20-minute prove that the machine cannot hold. Override with
+# PMSIG_MIN_FREE_GB=0 if you know better than this check — it is a resource precondition, not a
+# correctness one, and nothing about the proof changes if you clear it.
+require_free_ram() {
+  local need="${PMSIG_MIN_FREE_GB:-9}" have
+  have=$(free_gb)
+  if [[ -z "$have" ]]; then
+    info "could not measure free memory on this platform; skipping the check"
+    return 0
+  fi
+  info "free memory: ${have} GB (need ~${need} GB)"
+  if [[ "$need" != "0" ]] && awk "BEGIN{exit !($have < $need)}"; then
+    die "only ${have} GB of memory is free; a composed approval needs about ${need} GB.
+       Below that the prover swaps and a twenty-minute proof can take hours, which is
+       indistinguishable from a hang. Close what is holding memory (browsers and editors are
+       the usual culprits) and re-run. To proceed anyway: PMSIG_MIN_FREE_GB=0"
+  fi
+}
+
 # ─── H2: prerequisites are hard requirements ─────────────────────────────────────────────────────
 require() {
   command -v "$1" >/dev/null 2>&1 || die "'$1' is required but not installed. $2"
@@ -238,6 +276,7 @@ for i in 0 1; do
   acct="${!acct_var}"; nf="${!nf_var}"; wit_file="${!wit_var}"
   [[ -s "$wit_file" ]] || die "witness file for member $i is missing ($wit_file)"
 
+require_free_ram
   log "approval $((i+1)) of 2 — shielded member, anonymous, RISC0_DEV_MODE=$RISC0_DEV_MODE"
   info "this proves a real proof and takes ~20 minutes; it is not hung"
   started=$(date +%s)

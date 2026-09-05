@@ -115,6 +115,16 @@ Evidence: `artifacts/phase-E-ppe-approve-SUCCESS.txt`.
   of a fresh process — what a member actually experiences — but it is unexplained and is recorded
   rather than smoothed over.
 
+## 10a-bis. The memory requirement is now checked, not just stated
+
+Both scripts that generate a composed approval refuse to start one when less than ~9 GB is free
+(`PMSIG_MIN_FREE_GB` overrides; `0` disables). They used to print "expect ~9 GB of free RAM" and
+proceed regardless, which is how the first attempt at this ran for hours: below that threshold the
+prover does not fail, it swaps, and hours of thrashing are indistinguishable from slow proving.
+
+The check is a resource precondition, not a correctness one — nothing about the proof changes if you
+clear it — so it is overridable, and says so in the message.
+
 ## 10b. A spending key on the command line
 
 `pmsig approve --member <hex>` puts a member's nullifier secret key in the process's argument list,
