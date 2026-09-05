@@ -140,7 +140,8 @@ this prize's evidence gates:
   account holds one approval and one nullifier matching the client's computation, with no member
   identity. What remains undemonstrated is `execute` at full M, which needs a second approval from a
   second shielded account.
-- **Anything on the public testnet.** Programs are deployed to a *local* standalone sequencer only,
-  and `create_multisig` / `create_proposal` have executed there. There are no public testnet
-  transactions and no explorer links. `docs/DEPLOYMENT.md` and the on-chain CU figures in
+- **The multisig on the public testnet.** The wallet is connected to the public testnet and funded
+  (`./scripts/fund-testnet.sh`, balance 300, txs in blocks 38138/38139/38148), but **the programs are
+  not deployed there yet** and no multisig exists on it. Everything demonstrated so far is on a local
+  standalone sequencer. `docs/DEPLOYMENT.md` and the on-chain CU figures in
   [cu-costs.md](cu-costs.md) do not exist yet.

@@ -1,0 +1,31 @@
+# Phase G evidence: dana testnet diperoleh sendiri lewat faucet Piñata
+captured_utc: 2026-09-05T02:01:04Z
+commit: 1f04863
+
+## Temuan
+  Gerbang manusia 'funded testnet keys' TIDAK diperlukan. LEZ punya faucet
+  proof-of-work bernama Pinata, dan wallet-nya sudah membawa perintahnya.
+
+## Langkah yang terbukti bekerja (testnet publik, bukan lokal)
+  1. wallet_config.json  -> sequencer_addr: https://testnet.lez.logos.co
+  2. wallet check-health                      -> All looks good
+  3. wallet auth-transfer init --account-id <Public/...>
+     tx 5889815da03d8e5b1eec63c57428ea35ab3eda096b0ea9d184cac8712050b136
+     blok 38138
+  4. wallet pinata claim --to <Public/...>
+     'Found solution 13525770 in 1.800637833s'  (faucet proof-of-work)
+     tx 421a238d907b35a0e09ddb0243748c9b1ea896bbd07232ac9053b5ad6cf63d74
+     blok 38139
+
+## Hasil terverifikasi
+  akun   : 2gvvViSn7tP69qE9T1qxHbCsHs7idDYrcbMDZ8RoEqU8
+  balance: 150
+  nonce  : 1
+  Dikonfirmasi lewat wallet DAN lewat getAccount RPC langsung.
+
+## Dua jebakan yang memakan waktu
+  - 'wallet account list' sudah menyertakan prefiks 'Public/'. Menambahkannya lagi
+    menghasilkan 'Public/Public/...' dan gagal.
+  - Akun harus di-init dengan 'auth-transfer init' SEBELUM faucet mau mengirim.
+    Pesan errornya memandu, tapi hanya muncul setelah percobaan pertama gagal.
+  - Wallet meminta password interaktif; tanpa stdin ia menggantung. Beri '' lewat pipe.

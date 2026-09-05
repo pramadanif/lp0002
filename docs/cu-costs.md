@@ -105,7 +105,8 @@ testnet" is consistent with that.
 `create_multisig`, `create_proposal` and `execute` are **public** transactions executed directly by
 the sequencer, and their per-instruction figures are **not yet measured on a public testnet**.
 
-**Still to do — Phase G.** Will carry one numeric CU figure per instruction
+**Still to do — Phase G.** No longer blocked on funding: `./scripts/fund-testnet.sh` obtains
+testnet funds unattended via the Piñata faucet. Will carry one numeric CU figure per instruction
 (`create_multisig`, `create_proposal`, `approve`, `execute`), measured against the live LEZ testnet
 with the deployed program.
 

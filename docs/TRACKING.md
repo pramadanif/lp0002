@@ -30,7 +30,7 @@
 
 | Gate | Needed by | State |
 |------|-----------|-------|
-| Funded LEZ testnet keys (M members + treasury) | Phase G | not yet requested |
+| ~~Funded LEZ testnet keys~~ | — | **NOT A HUMAN GATE.** LEZ ships a proof-of-work faucet (Piñata). `./scripts/fund-testnet.sh` obtains funds unattended — verified: balance 150 → 300 on the public testnet |
 | Narrated video URL + transcript | Phase H (W5/H11) | not yet requested |
 | Basecamp click-QA (if automation fails) | Phase F | not yet needed |
 
