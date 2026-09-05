@@ -64,10 +64,27 @@ Run `./demo.sh`. Narrate as it goes.
 - **proof generation starting**, then the confirmation
 
 > Say at the proof: "This is a real proof — dev mode is off, you can see it in the banner. It takes
-> about twenty minutes and roughly nine gigabytes. I'll cut the wait, not the evidence."
+> about twenty minutes and roughly nine gigabytes. I'm speeding up the wait, not cutting it; the
+> clock stays on screen, and the full log is in the repo."
 
-**Cut the waiting. Do not cut the start or the finish.** The prize allows trimming a wait; it does
-not allow hiding whether proving happened.
+**Compress the wait as a labelled time-lapse. Do not cut the start or the finish.**
+
+Nothing in the prize text or the evaluation policy says whether a recording may be edited — so do
+not rely on it being allowed. What LP-0002 does require is that the recording *shows* proof
+generation and confirms `RISC0_DEV_MODE=0` was active. A time-lapse satisfies that only if nothing
+is hidden, so:
+
+- keep a running wall clock (or the shell's own timestamps) visible **through** the sped-up section,
+  so the ~19 minutes is verifiable on camera rather than asserted;
+- put an on-screen label — e.g. `time-lapse ×60, no cuts` — over that section;
+- show the `RISC0_DEV_MODE=0` banner and the start at real speed, and the receipt and confirmation
+  at real speed;
+- commit the unedited run log alongside it, so a reviewer who doubts the edit can check the
+  timestamps against `artifacts/phase-E-ppe-approve-SUCCESS.txt` and the demo log.
+
+The point is that a reviewer never has to *trust* the edit: the elapsed time is on screen and the
+raw log is in the repo. Two approvals are needed for full M, so this happens twice — record both,
+and do not reuse one clip for the other.
 
 ### 5. What the chain records (~90 s)
 
