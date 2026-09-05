@@ -706,3 +706,123 @@ fn execute_refuses_a_recipient_the_proposal_did_not_name() {
     );
     assert_program_error(&err, 1012, "InvalidProposalAction");
 }
+
+/// `create_proposal` was the last instruction with no coverage through the executor. It writes a
+/// proposal that decodes to what was asked for, at the address its seed derives to.
+#[test]
+fn create_proposal_runs_in_the_program_and_writes_correct_state() {
+    let pid = program_id();
+    let tree = member_tree();
+    let config_hash = pmsig_core::config_hash(&tree.root(), 2, 3, &MULTISIG_ID, &pid);
+    let proposal_seed = pmsig_core::proposal_seed(&config_hash, &PROPOSAL_ID);
+    let cfg = MultisigConfig {
+        version: pmsig_core::STATE_VERSION,
+        member_root: tree.root(),
+        m: 2,
+        n: 3,
+        multisig_id: MULTISIG_ID,
+        membership_program_id: pid,
+        proposal_count: 0,
+    };
+
+    let out = run(
+        vec![
+            account(
+                pid,
+                borsh::to_vec(&cfg).unwrap(),
+                public_pda(&pid, &config_hash),
+                false,
+            ),
+            account(
+                ProgramId::default(),
+                vec![],
+                public_pda(&pid, &proposal_seed),
+                false,
+            ),
+            account(
+                ProgramId::default(),
+                vec![],
+                AccountId::new([0x77; 32]),
+                true,
+            ),
+        ],
+        &Instruction::CreateProposal {
+            config_hash,
+            proposal_seed,
+            proposal_id: PROPOSAL_ID,
+            recipient: RECIPIENT,
+            amount: 1000,
+        },
+    )
+    .expect("create_proposal must succeed in the program");
+
+    let prop: Proposal =
+        borsh::from_slice(out.post_states[1].account().data.as_ref()).expect("proposal decodes");
+    assert_eq!(prop.proposal_id, PROPOSAL_ID);
+    assert_eq!(prop.config_hash, config_hash);
+    assert_eq!(
+        prop.action,
+        pmsig_multisig_core::ProposedAction::TreasuryTransfer {
+            recipient: RECIPIENT,
+            amount: 1000,
+        },
+        "the stored action must be the one proposed — `execute` pays whoever this names (INV-7)"
+    );
+    assert_eq!(prop.approvals(), 0, "a fresh proposal carries no approvals");
+    assert!(!prop.executed);
+}
+
+/// A proposal must live at the address its own `(config_hash, proposal_id)` derives to, or a
+/// caller could park a proposal at an address of their choosing and `execute` would find it there.
+#[test]
+fn create_proposal_refuses_a_seed_that_is_not_derived_from_its_contents() {
+    let pid = program_id();
+    let tree = member_tree();
+    let config_hash = pmsig_core::config_hash(&tree.root(), 2, 3, &MULTISIG_ID, &pid);
+    let honest_seed = pmsig_core::proposal_seed(&config_hash, &PROPOSAL_ID);
+    // The seed for a *different* proposal id, so it is well-formed but not this proposal's.
+    let wrong_seed = pmsig_core::proposal_seed(&config_hash, &[0xEE; 32]);
+    assert_ne!(honest_seed, wrong_seed);
+
+    let cfg = MultisigConfig {
+        version: pmsig_core::STATE_VERSION,
+        member_root: tree.root(),
+        m: 2,
+        n: 3,
+        multisig_id: MULTISIG_ID,
+        membership_program_id: pid,
+        proposal_count: 0,
+    };
+
+    let err = run(
+        vec![
+            account(
+                pid,
+                borsh::to_vec(&cfg).unwrap(),
+                public_pda(&pid, &config_hash),
+                false,
+            ),
+            account(
+                ProgramId::default(),
+                vec![],
+                public_pda(&pid, &wrong_seed),
+                false,
+            ),
+            account(
+                ProgramId::default(),
+                vec![],
+                AccountId::new([0x77; 32]),
+                true,
+            ),
+        ],
+        &Instruction::CreateProposal {
+            config_hash,
+            proposal_seed: wrong_seed,
+            proposal_id: PROPOSAL_ID,
+            recipient: RECIPIENT,
+            amount: 1000,
+        },
+    )
+    .expect_err("a proposal seed that does not derive from the proposal must be refused");
+    assert_program_error(&err, 1006, "UnknownProposal");
+}
