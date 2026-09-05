@@ -131,6 +131,41 @@ path sets it to 1 (gate H3, the pattern that sank prize PR #97).
 | Non-member submits an approval | rejected | Merkle path to `member_root` cannot be produced |
 | Removed member approves under the old root | fails — different address | Config change means a new `config_hash` (INV-5) |
 
+## Why the approvals `execute` counts cannot be forged
+
+`execute` spends money on the strength of a nullifier set it reads out of the proposal account. If
+that account could be supplied from anywhere, the threshold would be forgeable and every proof
+pointless — an attacker would simply hand `execute` an account of their own holding M invented
+nullifiers.
+
+**The `config_hash` argument does not cover this.** That argument (INV-3) is why `M`, `N`,
+`member_root` and the verifier cannot be substituted: changing any of them changes the address the
+config account must live at. Forging *approvals* changes no address, so it needs a separate reason,
+and this is it.
+
+Three checks compose, only the first of which is ours:
+
+1. **The proposal account must be at the address it derives to.** SPEL's `pda` constraint recomputes
+   `compute_pda(self_program_id, proposal_seed)` and rejects a mismatch with `PdaMismatch` (1009).
+   Asserted by `execute_refuses_a_proposal_account_at_the_wrong_address`, which fails if the correct
+   address is used instead — so it is testing the constraint, not passing for another reason.
+2. **No other program can come to own an account at that address.** LEZ ownership is taken through a
+   claim, and `Claim::Pda(PdaSeed)` is documented as "the program emits the seed; the `AccountId` is
+   derived from `(program_id, seed)`" — the *executing* program's id
+   (`lee/state_machine/core/src/program/mod.rs`). An address derived from our program id is therefore
+   claimable only by us.
+3. **Only the owner may change the data.** `validate_execution` rule 6 permits a data change only
+   when `account_program_owner == executing_program_id`, or when the pre-state is a default account;
+   rule 4 forbids changing `program_owner` silently.
+
+So state at that address can only ever have been written by this program, which is what makes the
+nullifier set an approval record rather than an attacker's assertion. This is plan gate **H9**
+("markers owned by verifier"), and it is the risk prize PR #133 was noted for.
+
+Points 2 and 3 are properties of LEZ, not of this repository. They are cited rather than re-proved,
+and if either changed upstream this argument would need revisiting — that is a dependency worth
+naming rather than leaving implicit.
+
 ## 6. Out of scope
 
 Membership rotation, proposal-content privacy, defence against timing/network correlation, formal

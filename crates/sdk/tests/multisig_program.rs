@@ -826,3 +826,59 @@ fn create_proposal_refuses_a_seed_that_is_not_derived_from_its_contents() {
     .expect_err("a proposal seed that does not derive from the proposal must be refused");
     assert_program_error(&err, 1006, "UnknownProposal");
 }
+
+/// **H9 — the approval markers `execute` counts must be ones only this program could have written.**
+///
+/// `execute` spends money on the strength of a nullifier set it reads out of the proposal account.
+/// If that account could be supplied from anywhere, the threshold would be forgeable and the proofs
+/// pointless: an attacker would hand `execute` an account of their own containing M invented
+/// nullifiers. Note this is *not* covered by the `config_hash` argument — forging approvals does not
+/// change the config account's address.
+///
+/// Three things stop it, and this test pins the first, which is the one in our reach:
+///
+/// 1. **SPEL** rejects a proposal account whose id is not `compute_pda(self_program_id,
+///    proposal_seed)` — asserted below.
+/// 2. **LEZ** lets a program claim ownership only of accounts derived from *its own* id:
+///    `Claim::Pda(PdaSeed)` is documented as "the program emits the seed; the `AccountId` is derived
+///    from `(program_id, seed)`" (`lee/state_machine/core/src/program/mod.rs`). So no other program
+///    can come to own an account at our PDA.
+/// 3. **LEZ** allows a data change only when `account_program_owner == executing_program_id`, or the
+///    pre-state is default (`validate_execution` rule 6), and forbids a silent owner change
+///    (rule 4).
+///
+/// Together: the account at that address can only ever have been written by this program.
+#[test]
+fn execute_refuses_a_proposal_account_at_the_wrong_address() {
+    let (pid, config_hash, proposal_seed, cfg, prop) = executable_proposal();
+
+    let mut accounts = execute_accounts(
+        pid,
+        config_hash,
+        proposal_seed,
+        &cfg,
+        &prop,
+        AccountId::new(RECIPIENT),
+    );
+    // Same well-formed, threshold-met proposal — parked at an address it does not derive to, as an
+    // attacker supplying their own account would have to do.
+    accounts[1] = account(
+        pid,
+        borsh::to_vec(&prop).unwrap(),
+        AccountId::new([0x5A; 32]),
+        false,
+    );
+
+    let err = run(
+        accounts,
+        &Instruction::Execute {
+            config_hash,
+            proposal_seed,
+        },
+    )
+    .expect_err("a proposal account that is not the derived PDA must be refused");
+    assert!(
+        err.contains("[1009]") || err.contains("PdaMismatch"),
+        "expected SPEL's PdaMismatch (1009), got: {err}"
+    );
+}
