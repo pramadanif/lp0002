@@ -79,7 +79,7 @@ Each phase has a status document recording the exact commands run, their exit co
 | H | Documentation, preflight green, narrated video | ☐ |
 
 Progress and blockers: [`docs/TRACKING.md`](docs/TRACKING.md).
-Criteria mirror: [`PRIZE_CHECKLIST.md`](PRIZE_CHECKLIST.md).
+Criteria and their status: [`docs/criteria-checklist.md`](docs/criteria-checklist.md). The criteria list alone, with the plan's `P-*` ids: [`PRIZE_CHECKLIST.md`](PRIZE_CHECKLIST.md).
 
 ## Pinned versions
 
