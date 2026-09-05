@@ -319,17 +319,21 @@ fn an_approval_from_the_wrong_verifier_is_rejected() {
 ///
 /// `approve` requires a `verified_by` program id, and the only caller that can supply one truthfully
 /// is the program dispatcher, which sets it from the chained call it actually made. A transaction
-/// that carried no chained call has no id to pass. The `PublicApprovePathRejected` code exists for
-/// the dispatcher to return in exactly that case, and is asserted here so it cannot be quietly
-/// dropped from the catalogue.
+/// that carried no chained call has no id to pass.
+///
+/// There is deliberately **no** error code for this case. An earlier revision carried a
+/// `PublicApprovePathRejected` (1011) variant, but nothing could ever return it — the condition it
+/// described is unrepresentable, not merely rejected — and the only test of it asserted the
+/// constant against itself. It was retired rather than left in the catalogue as an error the
+/// program claims to raise and never does. What is asserted below is the real guarantee: a
+/// verifier id that names no bound program is refused.
 #[test]
 fn there_is_no_public_approve_path() {
-    assert_eq!(MultisigError::PublicApprovePathRejected.code(), 1011);
     // The signature itself is the guarantee: there is no `approve` overload without `verified_by`.
     let mut f = fixture();
     let root = f.tree.root();
     let hostile: ProgramIdWords = [0; 8];
-    assert!(
+    assert_eq!(
         approve(
             &f.config,
             &f.config_seed,
@@ -337,8 +341,9 @@ fn there_is_no_public_approve_path() {
             &claim_of(&ALICE, root),
             &hostile
         )
-        .is_err(),
-        "a zero/absent verifier id must never be accepted"
+        .unwrap_err(),
+        MultisigError::WrongMembershipProgram,
+        "a zero/absent verifier id must be refused as an unbound verifier, not merely fail"
     );
 }
 

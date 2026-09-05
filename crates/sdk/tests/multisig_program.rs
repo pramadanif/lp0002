@@ -125,6 +125,35 @@ fn run(
     risc0_zkvm::serde::from_slice(&session.journal.bytes).map_err(|e| e.to_string())
 }
 
+/// Asserts a program failure carries exactly the documented error, checked on **both** halves of
+/// the wire format that SPEL produces for `SpelError::Custom`:
+///
+/// ```text
+/// Program error [7002]: Program error 1002: DuplicateNullifier
+///                ^^^^                 ^^^^  ^^^^^^^^^^^^^^^^^^
+///                6000+code            code  name
+/// ```
+///
+/// SPEL maps `Custom { code }` to the numeric code `6000 + code`
+/// (`spel-framework-core/src/error.rs`), so `6000 + code` — not the bare code — is what a client
+/// sees. Both are pinned here so that a change to either the offset or our own numbering is caught
+/// by a failing test rather than discovered by a reviewer. See `docs/error-codes.md`.
+///
+/// Deliberately strict: an earlier version of these assertions allowed
+/// `|| err.contains("panic")`, which made them pass for *any* guest panic and so verified nothing.
+#[track_caller]
+fn assert_program_error(err: &str, code: u32, name: &str) {
+    let wire = 6000 + code;
+    assert!(
+        err.contains(&format!("[{wire}]")),
+        "expected on-wire code [{wire}] ({name}), got: {err}"
+    );
+    assert!(
+        err.contains(&format!("{code}: {name}")),
+        "expected `{code}: {name}` in the message, got: {err}"
+    );
+}
+
 // ---------------------------------------------------------------------------------------------
 
 /// The program creates a multisig and writes state that decodes to what we asked for.
@@ -196,10 +225,7 @@ fn the_program_rejects_a_config_that_does_not_match_its_address() {
         },
     )
     .expect_err("a lowered threshold must not produce a valid output");
-    assert!(
-        err.contains("1003") || err.to_lowercase().contains("panic"),
-        "expected ConfigHashMismatch (1003), got: {err}"
-    );
+    assert_program_error(&err, 1003, "ConfigHashMismatch");
 }
 
 /// A nonsensical threshold is refused by the program, not just by the host-side rules.
@@ -233,10 +259,7 @@ fn the_program_refuses_m_greater_than_n() {
         },
     )
     .expect_err("4-of-3 must be refused");
-    assert!(
-        err.contains("1009") || err.to_lowercase().contains("panic"),
-        "got: {err}"
-    );
+    assert_program_error(&err, 1009, "InvalidThresholdConfig");
 }
 
 /// `approve` must emit a `ChainedCall` to the membership program — that call is what LEZ's
@@ -381,10 +404,7 @@ fn the_program_refuses_a_duplicate_nullifier() {
         },
     )
     .expect_err("a duplicate nullifier must be refused by the program");
-    assert!(
-        err.contains("1002") || err.to_lowercase().contains("panic"),
-        "got: {err}"
-    );
+    assert_program_error(&err, 1002, "DuplicateNullifier");
 }
 
 /// A malformed witness is refused before any chained call is built (error 1001). Found by this
@@ -448,10 +468,7 @@ fn the_program_refuses_a_malformed_witness() {
         },
     )
     .expect_err("a malformed witness must be refused");
-    assert!(
-        err.contains("1001"),
-        "expected InvalidProof (1001), got: {err}"
-    );
+    assert_program_error(&err, 1001, "InvalidProof");
 }
 
 /// **The program's output must be one LEZ itself will accept.**

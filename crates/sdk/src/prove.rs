@@ -33,6 +33,27 @@ pub struct ApprovalProof {
     pub image_id: [u32; 8],
 }
 
+/// Whether an external `r0vm` can be found.
+///
+/// risc0 resolves the prover through `rzup`'s home (`~/.risc0`) as well as `PATH`, so both are
+/// checked. Used to turn a missing prover into [`SdkError::ProverNotFound`], which names the install
+/// command, rather than a generic failure the member cannot act on (**P-R1**).
+#[must_use]
+pub fn prover_available() -> bool {
+    if std::process::Command::new("r0vm")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success())
+    {
+        return true;
+    }
+    std::env::var("RISC0_HOME")
+        .map(std::path::PathBuf::from)
+        .or_else(|_| std::env::home_dir().map(|h| h.join(".risc0")).ok_or(()))
+        .map(|home| home.join("bin").join("r0vm").exists())
+        .unwrap_or(false)
+}
+
 /// Whether `RISC0_DEV_MODE` is switched on in this process's environment.
 #[must_use]
 pub fn dev_mode_enabled() -> bool {
@@ -105,6 +126,13 @@ pub fn prove_approval(
 ) -> Result<ApprovalProof, SdkError> {
     if dev_mode_enabled() && !allow_dev_mode {
         return Err(SdkError::DevModeRefused);
+    }
+
+    // Check the prover exists before doing anything expensive. Without this, a missing r0vm
+    // surfaces as a generic 2001 carrying whatever the prover crate happened to say — usually
+    // "No such file or directory", which tells a member nothing about what to install.
+    if !prover_available() {
+        return Err(SdkError::ProverNotFound);
     }
 
     let image_id = compute_image_id(program_binary)

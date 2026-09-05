@@ -32,9 +32,12 @@ pub enum MultisigError {
     /// 1009 — nonsensical configuration: `M == 0`, `N == 0`, or `M > N`.
     InvalidThresholdConfig,
     /// 1010 — the target account is already initialised.
+    ///
+    /// Raised by the **client** (`pmsig-cli`) as a pre-check, so a duplicate `create` fails before
+    /// a transaction is built. On chain the same condition is caught by SPEL's `#[account(init)]`
+    /// constraint, which raises its own framework error `1002 AccountAlreadyInitialized` — code
+    /// `1010` never appears on chain. See `docs/error-codes.md`.
     AccountAlreadyInitialized,
-    /// 1011 — an approval was attempted outside the privacy-preserving path (**H9**).
-    PublicApprovePathRejected,
     /// 1012 — the proposed action is malformed or unsupported.
     InvalidProposalAction,
     /// 1013 — the chained call named a membership program this multisig is not bound to (ADR-002).
@@ -56,7 +59,6 @@ impl MultisigError {
             Self::ProposalClosed => 1008,
             Self::InvalidThresholdConfig => 1009,
             Self::AccountAlreadyInitialized => 1010,
-            Self::PublicApprovePathRejected => 1011,
             Self::InvalidProposalAction => 1012,
             Self::WrongMembershipProgram => 1013,
         }
@@ -76,15 +78,35 @@ impl MultisigError {
             Self::ProposalClosed => "ProposalClosed",
             Self::InvalidThresholdConfig => "InvalidThresholdConfig",
             Self::AccountAlreadyInitialized => "AccountAlreadyInitialized",
-            Self::PublicApprovePathRejected => "PublicApprovePathRejected",
             Self::InvalidProposalAction => "InvalidProposalAction",
             Self::WrongMembershipProgram => "WrongMembershipProgram",
         }
     }
 
+    /// The code this error carries **on chain**, or `None` if it never reaches the chain.
+    ///
+    /// The program reports its errors through `SpelError::custom(code, name)`, and SPEL maps
+    /// `Custom { code }` to `6000 + code`. So a client matching a failed transaction must compare
+    /// against this, not [`Self::code`]:
+    ///
+    /// ```text
+    /// Program error [7002]: Program error 1002: DuplicateNullifier
+    ///                ~~~~ on_chain_code()   ~~~~ code()
+    /// ```
+    ///
+    /// [`Self::AccountAlreadyInitialized`] returns `None`: it is a client-side pre-check, and on
+    /// chain that condition is caught first by SPEL's own `1002`.
+    #[must_use]
+    pub const fn on_chain_code(&self) -> Option<u32> {
+        match self {
+            Self::AccountAlreadyInitialized => None,
+            other => Some(6000 + other.code()),
+        }
+    }
+
     /// Every code, so tests and the IDL can enumerate them.
     #[must_use]
-    pub const fn all() -> [Self; 13] {
+    pub const fn all() -> [Self; 12] {
         [
             Self::InvalidProof,
             Self::DuplicateNullifier,
@@ -96,7 +118,6 @@ impl MultisigError {
             Self::ProposalClosed,
             Self::InvalidThresholdConfig,
             Self::AccountAlreadyInitialized,
-            Self::PublicApprovePathRejected,
             Self::InvalidProposalAction,
             Self::WrongMembershipProgram,
         ]
@@ -133,7 +154,7 @@ mod tests {
             assert!(!seen.contains(&e.code()), "duplicate code {e}");
             seen.push(e.code());
         }
-        assert_eq!(seen.len(), 13);
+        assert_eq!(seen.len(), 12);
     }
 
     #[test]
@@ -156,15 +177,31 @@ mod tests {
     fn every_code_appears_in_the_documentation() {
         let doc = include_str!("../../../docs/error-codes.md");
         for e in MultisigError::all() {
+            // Deliberately restricted to *table rows*, not `doc.contains(..)` over the whole
+            // file: the catalogue must carry a row tying the number to the name. Two weaker
+            // versions were tried and both passed a mutation that broke the table — a bare
+            // whole-file substring check, and a same-line check, because the wire-format example
+            // near the top is itself one line carrying "7002", "1002" and "DuplicateNullifier".
+            // Requiring a leading `|` excludes prose and fenced examples, so only the table counts.
+            let has_row = |needle: &str| {
+                doc.lines().any(|l| {
+                    l.trim_start().starts_with('|') && l.contains(needle) && l.contains(e.name())
+                })
+            };
             assert!(
-                doc.contains(e.name()),
-                "{e} is missing from docs/error-codes.md"
+                has_row(&e.code().to_string()),
+                "docs/error-codes.md has no row carrying both {} and {}",
+                e.code(),
+                e.name()
             );
-            assert!(
-                doc.contains(&e.code().to_string()),
-                "code {} is missing from docs/error-codes.md",
-                e.code()
-            );
+            if let Some(on_chain) = e.on_chain_code() {
+                assert!(
+                    has_row(&on_chain.to_string()),
+                    "docs/error-codes.md has no row carrying the on-chain code {on_chain} \
+                     next to {} — the catalogue must document the number a client actually sees",
+                    e.name()
+                );
+            }
         }
     }
 }

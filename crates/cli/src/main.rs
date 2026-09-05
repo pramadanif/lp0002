@@ -18,7 +18,7 @@ use pmsig_core::{tree::MemberTree, Digest32};
 use pmsig_membership_core::verify::npk_of;
 use pmsig_multisig_core::{
     logic::{self, CreateMultisig},
-    ProgramIdWords, ProposedAction,
+    MultisigError, ProgramIdWords, ProposedAction,
 };
 use pmsig_sdk::member::{prepare_approval, MemberSecrets, MultisigView};
 use pmsig_store::{ApprovalRecord, ApprovalStatus, ApprovalStore};
@@ -200,7 +200,12 @@ fn propose(cli: &Cli, proposal_id: &str, recipient: &str, amount: u128) -> Resul
     .map_err(|e| anyhow::anyhow!("{e}"))?;
 
     if st.proposal_mut(&pid).is_some() {
-        bail!("1010 AccountAlreadyInitialized: a proposal with that id already exists");
+        // Rendered from the catalogue entry itself (`"1010 AccountAlreadyInitialized"`) rather
+        // than hardcoded, so the message cannot drift from `docs/error-codes.md`.
+        bail!(
+            "{}: a proposal with that id already exists",
+            MultisigError::AccountAlreadyInitialized
+        );
     }
     st.proposals.push(proposal);
     st.save(&cli.state)?;

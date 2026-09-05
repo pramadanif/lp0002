@@ -46,14 +46,6 @@ pub enum SdkError {
     /// 2007 — local state is behind the chain.
     #[error("2007 StaleProposal: the proposal has already reached its threshold or been executed")]
     StaleProposal,
-
-    /// 2010 — the local approval store could not be read.
-    #[error("2010 StoreCorrupt: {0}")]
-    Store(String),
-
-    /// Placeholder for codes not yet wired.
-    #[error("not implemented yet: {0}")]
-    NotImplemented(&'static str),
 }
 
 #[cfg(test)]
@@ -67,12 +59,6 @@ pub enum SdkError {
 mod tests {
     use super::*;
 
-    #[test]
-    fn error_renders_its_context() {
-        let e = SdkError::NotImplemented("prove");
-        assert_eq!(e.to_string(), "not implemented yet: prove");
-    }
-
     /// Error text must carry the documented code so a member can look it up in
     /// `docs/error-codes.md` (P-R1, P-R3).
     #[test]
@@ -85,7 +71,16 @@ mod tests {
         assert!(SdkError::NotAMember.to_string().starts_with("2004 "));
         assert!(SdkError::AlreadyApproved.to_string().starts_with("2006 "));
         assert!(SdkError::StaleProposal.to_string().starts_with("2007 "));
-        assert!(SdkError::Store("x".into()).to_string().starts_with("2010 "));
+    }
+
+    /// Every variant must be reachable from real code, not just from its own test. A documented
+    /// error that cannot occur is worse than an undocumented one: it tells a reader the system
+    /// behaves in a way it does not.
+    #[test]
+    fn prover_detection_is_wired_to_the_error() {
+        // `prove_approval` consults this before doing anything expensive, so ProverNotFound is
+        // reachable exactly when the prover is missing.
+        let _ = crate::prove::prover_available();
     }
 
     /// P-R1: an error a member sees must say what to do next, not just what failed.

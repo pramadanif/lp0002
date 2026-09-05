@@ -23,7 +23,7 @@ Abort check at phase start: #125 `reviewDecision` empty; merged LP-0002 PRs → 
 |----|-------------|-------|----------|
 | **SC-C.1** | IDL published (**P-U3**) | ✅ green | `artifacts/multisig-idl.json`, generated from the `#[lez_program]` annotations at compile time by `scripts/generate-idl.sh`, so it cannot drift from the instruction set. Program `private_multisig`, 4 instructions |
 | **SC-C.2** | Lifecycle test passes (create→propose→approve×M→execute) | ✅ green | `the_full_lifecycle_completes_at_full_m` — a 2-of-3 taken through both approvals to execution, asserting refusal at 1-of-2 on the way (**H13/W15**: the primary path is full M, never a lowered tier) |
-| **SC-C.3** | Double approve → documented error code (**P-F3**, **P-R3**) | ✅ green | `a_member_cannot_approve_the_same_proposal_twice` → **1002 `DuplicateNullifier`**, and the rejected approval leaves no trace. Plus `a_member_cannot_double_vote_from_another_of_their_addresses` |
+| **SC-C.3** | Double approve → documented error code (**P-F3**, **P-R3**) | ✅ green | `a_member_cannot_approve_the_same_proposal_twice` → **1002 `DuplicateNullifier`** (`7002` on chain), and the rejected approval leaves no trace. Plus `a_member_cannot_double_vote_from_another_of_their_addresses` |
 | **SC-C.4** | Early execute → documented error code | ✅ green | `executing_before_the_threshold_is_rejected` → **1004 `ThresholdNotMet`**; also `executing_twice_is_rejected` → 1005, `approving_after_execution_is_rejected` → 1008 |
 | **SC-C.5** | Invalid proof → documented error code | ✅ green | `an_approval_from_the_wrong_verifier_is_rejected` → **1013 `WrongMembershipProgram`**; stale root → 1007; wrong multisig/proposal → 1006. An invalid *witness* is rejected one layer down, in the guest (Phase B) |
 | **SC-C.6** | State layout has **no** voter identity list (**P-F2**) | ✅ green | `Proposal` has six fields — version, config_hash, proposal_id, action, nullifiers, executed — and no roster, bitmap or approver list. `the_executed_state_records_a_threshold_and_no_identities` encodes a completed 2-of-3 and asserts no member `npk` or `nsk` appears in the bytes |
@@ -60,9 +60,15 @@ and the proof itself is carried by a `ChainedCall` that only exists on the priva
 transaction that carried no chained call has no verified output for `env::verify` to cover, so it
 never becomes valid.
 
-The `PublicApprovePathRejected` code (1011) exists for the dispatcher to return in that case and is
-asserted by test so it cannot be quietly dropped. The structural guarantee is the signature: there is
-no `approve` overload that omits `verified_by`.
+The structural guarantee is the signature: there is no `approve` overload that omits `verified_by`.
+
+An earlier revision also carried a `PublicApprovePathRejected` (1011) error code "for the dispatcher
+to return in that case". It was retired: nothing could ever construct it — the case is
+unrepresentable, not rejected at runtime — and its only test asserted the constant against itself.
+Documenting an error the program claims to raise and never does is an overclaim, so the code is gone
+and `there_is_no_public_approve_path` now asserts the real behaviour: a verifier id naming no bound
+program is refused with **1013 `WrongMembershipProgram`** (`7013` on chain). See
+[`error-codes.md` §1.3](error-codes.md).
 
 ## Shape of the implementation
 

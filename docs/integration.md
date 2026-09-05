@@ -58,10 +58,19 @@ let resumed = store.approval_count(&proposal_id)?;   // survives a restart
 
 ## Error handling
 
-Codes are stable and documented in [`error-codes.md`](error-codes.md). On-chain failures are
-`1001`–`1013`; client failures `2001`–`2011`. Both render as `"<code> <Name>"`, so a failed
-transaction can be grepped against the catalogue. `MultisigError` implements `std::error::Error`, so
-it composes with `?`.
+Codes are stable and documented in [`error-codes.md`](error-codes.md). Client failures are
+`2001`–`2011` and render as `"<code> <Name>"`.
+
+On-chain failures need one extra step. The program raises `1001`–`1013`, but SPEL reports a custom
+program error as `6000 + code`, so **match on `7001`–`7013`**:
+
+```text
+Program error [7002]: Program error 1002: DuplicateNullifier
+```
+
+Match the bracketed number, not the one in the message text — the bare `1002` there is our code
+before the offset, and SPEL's own framework errors occupy `1000`–`1010`. `MultisigError` implements
+`std::error::Error`, so it composes with `?`.
 
 Three worth handling explicitly:
 
