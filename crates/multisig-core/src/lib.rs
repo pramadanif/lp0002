@@ -14,8 +14,10 @@ use pmsig_core::{Digest32, MemberCount, Threshold, STATE_VERSION};
 use serde::{Deserialize, Serialize};
 
 pub mod error;
+pub mod instruction;
 pub mod logic;
 pub use error::MultisigError;
+pub use instruction::Instruction;
 
 /// A LEZ program id: `[u32; 8]`.
 pub type ProgramIdWords = [u32; 8];

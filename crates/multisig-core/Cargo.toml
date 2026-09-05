@@ -16,6 +16,7 @@ lee_core.workspace = true
 
 [dev-dependencies]
 lee_core = { workspace = true, features = ["host"] }
+serde_json.workspace = true
 
 [lints]
 workspace = true

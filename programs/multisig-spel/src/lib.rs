@@ -48,7 +48,7 @@ fn with_data<T: borsh::BorshSerialize>(
     Ok(updated)
 }
 
-#[lez_program]
+#[lez_program(instruction = "pmsig_multisig_core::Instruction")]
 mod private_multisig {
     #[allow(unused_imports)]
     use super::*;

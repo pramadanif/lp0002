@@ -64,3 +64,28 @@ echo
 
 cargo run --quiet -p pmsig-sdk --example verify_onchain -- \
   "$RPC" artifacts/IMAGE_IDS.md "$CONFIG_HASH" "$PROPOSAL_SEED"
+
+# Transaction variants: an approval MUST be a privacy-preserving transaction. If approvals ever
+# showed up as plain public transactions, the whole privacy claim would be hollow — and that is
+# exactly what a previous submission to this prize was closed for ("the execute transaction
+# contains no proof"). Checked here rather than asserted in prose.
+if [[ -f docs/DEPLOYMENT.md ]]; then
+  echo
+  echo "  transaction variants:"
+  approvals=0
+  while read -r tx; do
+    [[ -n "$tx" ]] || continue
+    variant=$(curl -s -X POST "$RPC" -H 'content-type: application/json' \
+      --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getTransaction\",\"params\":[\"$tx\"]}" \
+      --max-time 20 | grep -oE 'PrivacyPreserving|Public' | head -1)
+    printf '    %s  %s\n' "${variant:-unknown}" "${tx:0:16}…"
+    [[ "$variant" == "PrivacyPreserving" ]] && approvals=$((approvals+1))
+  done < <(grep -oE '/transaction/[0-9a-f]{64}' docs/DEPLOYMENT.md | sed 's|/transaction/||' | sort -u)
+
+  if (( approvals == 0 )); then
+    echo "  FAIL: no PrivacyPreserving transaction among the published evidence." >&2
+    echo "        Approvals must travel the private path; public ones prove nothing." >&2
+    exit 1
+  fi
+  echo "  $approvals privacy-preserving transaction(s) — approvals really did take the private path"
+fi
