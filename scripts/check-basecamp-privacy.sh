@@ -23,9 +23,14 @@ cd "$(dirname "$0")/.." || { echo "cannot cd to repo root" >&2; exit 1; }
 QML=app/qml/Main.qml
 BACKEND=app/src/PrivateMultisigBackend.cpp
 
+# Phase F has run and app/ is committed, so its absence is now a broken checkout or a deleted
+# directory — not a phase that has not happened yet. This used to `exit 0` here, which is the
+# skip-to-green pattern gate H2 forbids and the one #125 was pulled up for: a privacy check that
+# passes because it could not run tells an evaluator nothing.
 if [[ ! -d app ]]; then
-  echo "app/ does not exist yet (Phase F has not run)."
-  exit 0
+  echo "FATAL: app/ is missing. It is committed, so this is a broken checkout." >&2
+  echo "       Regenerate with ./scripts/build-basecamp.sh — this check does not pass by default." >&2
+  exit 1
 fi
 
 for f in "$QML" "$BACKEND"; do

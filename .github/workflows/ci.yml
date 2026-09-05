@@ -100,12 +100,17 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
-      - name: Install risc0 toolchain (r0vm)
+      - name: Install risc0 toolchain (r0vm + the guest Rust toolchain)
         run: |
           curl -L https://risczero.com/install | bash
           echo "$HOME/.risc0/bin" >> "$GITHUB_PATH"
           "$HOME/.risc0/bin/rzup" install r0vm 3.0.6
           "$HOME/.risc0/bin/rzup" install cargo-risczero 3.0.6
+          # build-guests.sh cross-compiles with RUSTUP_TOOLCHAIN=risc0. Installing r0vm alone gives
+          # a prover but no guest toolchain, and the first run failed here with "override toolchain
+          # 'risc0' is not installed" — after twelve minutes of building the sequencer.
+          "$HOME/.risc0/bin/rzup" install rust
+          rustup toolchain list
 
       # H2/H3: the prover must be present and dev mode must be off. A run that quietly proved
       # nothing would be worse than no run at all — RISC0_DEV_MODE=1 produces a receipt that

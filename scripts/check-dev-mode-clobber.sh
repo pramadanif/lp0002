@@ -29,10 +29,16 @@ done < <(
     | sort -u
 )
 
+# Zero targets is not a pass. This gate guards H3 — that nothing on the submission path forces
+# RISC0_DEV_MODE=1 and produces a receipt that verifies and proves nothing. If the discovery above
+# ever stops matching (a rename, a moved directory, a broken filter), scanning nothing would report
+# OK and the guarantee would quietly be worth nothing. It currently finds 13 files; finding none
+# means this check cannot do its work, so it fails.
 if (( ${#targets[@]:-0} == 0 )); then
-  echo "no submission-path scripts to scan yet"
-  echo "OK"
-  exit 0
+  echo "FATAL: found no submission-path scripts to scan." >&2
+  echo "       demo.sh and scripts/*.sh are committed, so this means the discovery above is" >&2
+  echo "       broken — not that there is nothing to check. Refusing to report OK." >&2
+  exit 1
 fi
 
 printf 'scanning %d file(s):\n' "${#targets[@]}"
