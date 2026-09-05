@@ -38,7 +38,7 @@
 
 | Item | Needed by | Note |
 |------|-----------|------|
-| Reproducible guest build (`build-guests.sh --docker`) | Phase G | `artifacts/IMAGE_IDS.md` currently records a local, non-reproducible build and says so |
+| ~~Reproducible guest build~~ | — | **DONE 2026-09-05.** `build-guests.sh --docker` now works and `artifacts/IMAGE_IDS.md` records `reproducible (cargo risczero build, container r0.1.91.1)`. It had never run: the docker branch passed `--bin`, which `cargo risczero build` does not accept. Two further defects behind it — the pinned container's guest rustc is 1.91 against a workspace MSRV of 1.94, and the ELF was picked with `head -1` from a directory holding the raw ELF, an already-wrapped `.bin` and a copy under `deps/` |
 | Second-proof slowdown undiagnosed | Phase H (BUGS_FILED) | `docs/tried-failed.md`; does not affect the recorded 53.26 s |
 | ~~PPE composition not demonstrated~~ | — | **DONE.** tx `f2458791…198fbcb5` confirmed; ≈19 min, peak 8.74 GB (`artifacts/phase-E-ppe-approve-SUCCESS.txt`) |
 | ~~U-6~~ | — | **RESOLVED.** It can; `--bin-<NAME>` resolves the ChainedCall dependency |

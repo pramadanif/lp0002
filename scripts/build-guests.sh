@@ -54,21 +54,25 @@ build_one() { # name, dir, bin
       cargo risczero build --manifest-path "$dir/Cargo.toml" \
       || { echo "FATAL: reproducible build of $name failed" >&2; exit 1; }
 
-    # It builds every bin in the package, so the ELF is selected by name. The previous
-    # `find … -name '*.bin' | head -1` would have taken whichever the filesystem returned first —
-    # and programs/multisig-spel has two bins, `idl` and `multisig`, so that could silently have
-    # packaged and deployed the wrong program.
-    local matches
-    matches=$(find "$dir/target" -path "*$TARGET/docker/*" -type f \
-                \( -name "$bin" -o -name "$bin.bin" \) | sort -u)
-    local count
-    count=$(printf '%s\n' "$matches" | grep -c . || true)
-    if [[ "$count" -ne 1 ]]; then
-      echo "FATAL: expected exactly one built ELF named '$bin' under $dir/target, found $count:" >&2
-      printf '  %s\n' $matches >&2
+    # It builds every bin in the package, so the ELF is named explicitly rather than guessed. The
+    # previous `find … -name '*.bin' | head -1` would have taken whichever path the filesystem
+    # returned first, and programs/multisig-spel has two bins — `idl` and `multisig` — so that
+    # could silently have packaged and deployed the wrong program.
+    #
+    # The build leaves three things side by side:
+    #   docker/<bin>        the raw guest ELF          <- this one
+    #   docker/<bin>.bin    an already-wrapped ProgramBinary
+    #   docker/deps/<bin>-<hash>   the same ELF again
+    # `pmsig-image-id` wraps a *raw* ELF into a ProgramBinary, exactly as the local path does, so
+    # feeding it the `.bin` would wrap a wrapped binary and yield an ImageID for something that is
+    # not the program. Taking the raw ELF also keeps both build modes computing the ImageID the
+    # same way, which is what makes them comparable at all.
+    elf="$dir/target/$TARGET/docker/$bin"
+    if [[ ! -f "$elf" ]]; then
+      echo "FATAL: reproducible build produced no ELF at $elf. What it did produce:" >&2
+      find "$dir/target" -path "*$TARGET/docker/*" -maxdepth 2 -type f >&2
       exit 1
     fi
-    elf="$matches"
     kind="reproducible (cargo risczero build, container $RISC0_DOCKER_CONTAINER_TAG)"
   else
     echo "==> building $name with the local toolchain (NOT reproducible)"

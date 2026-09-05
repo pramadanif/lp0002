@@ -11,7 +11,38 @@ changes every multisig address.
 
 | | |
 |-|-|
-| Built | 2026-09-05T09:35:43Z |
-| Commit | `2558e53` |
+| Built | 2026-09-05T10:16:35Z |
+| Commit | `0b40f29` |
 | risc0 | risc0-r0vm 3.0.6 |
 | LEZ | v0.2.4 (see docs/VERSIONS.md) |
+
+## `membership`
+
+| Field | Value |
+|-------|-------|
+| Crate | `programs/membership-lez` |
+| Build | reproducible (cargo risczero build, container r0.1.91.1) |
+| ImageID | `960db4f24de1f1b0ebdc064a9be1246bde0e6a06f8be7f349fa562cc4207eade` |
+| ProgramId (u32×8) | `[4071886230, 2968641869, 1241963755, 1797579163, 107613918, 880787192, 3429016991, 3739879234]` |
+| Binary | `artifacts/membership.bin` |
+| Binary size | 393868 bytes |
+| SHA-256 | `431a6a858cdb9db29959549437712e3974434c1ad6e8152beb449da5527ce979` |
+
+## `multisig`
+
+| Field | Value |
+|-------|-------|
+| Crate | `programs/multisig-spel` |
+| Build | reproducible (cargo risczero build, container r0.1.91.1) |
+| ImageID | `cb3bcc5e9d4645489cf6c145f84beb377b51b6f43aaafaadb10704ed4466bea6` |
+| ProgramId (u32×8) | `[1590442955, 1212499613, 1170339484, 938167288, 4105589115, 2918885946, 3976464305, 2797495876]` |
+| Binary | `artifacts/multisig.bin` |
+| Binary size | 509660 bytes |
+| SHA-256 | `443083b6b55b2ddf3f34f388b115aeedcac556b894e3293a3a225b3b28481d0e` |
+
+## Reproducing
+
+```bash
+./scripts/build-guests.sh --docker    # reproducible; what a deployed binary must come from
+./scripts/build-guests.sh             # local toolchain; development only
+```

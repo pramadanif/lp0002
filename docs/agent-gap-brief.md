@@ -36,7 +36,7 @@ Not aborting.
 | H-B | ImageID drift | **CONFIRMED — worse than stated** | Phase E evidence records `821c23d9…`/`cee07cd3…`; IMAGE_IDS.md holds `f5cc9f37…`/`94bc1426…`. **Both** differ, so `config_hash` moves too and every multisig address with it. TRACKING's claim that membership was unchanged was true of the INV-7 rebuild and misleading about the Phase E evidence; corrected |
 | H-C | `explorer-links` hollow | **PARTIAL** | Job now wired. With no `DEPLOYMENT.md` it reports "nothing to check — NOT evidence of anything" and exits 0; it has never reported a pass. Must fail on dead txs once the file exists |
 | H-D | risc0 pin drift | **FIXED this session** | VERSIONS.md gave 3.0.5 — LEZ v0.2.4's pin, not ours. We use 3.0.6. Both now stated, with why the difference is checkable rather than assumed |
-| H-E | Guests non-reproducible | **OPEN** | IMAGE_IDS.md records a local build and says so; `deploy-testnet.sh` refuses to deploy one. Needs `--docker` before Phase G |
+| H-E | Guests non-reproducible | **FIXED** | `build-guests.sh --docker` works and IMAGE_IDS.md records a reproducible build, so `deploy-testnet.sh` no longer refuses. It had never run at all — three defects, see the commit. ImageIDs moved again: membership `f5cc9f37…`→`960db4f2…`, multisig `94bc1426…`→`cb3bcc5e…` |
 
 ## Where I disagree with the brief
 

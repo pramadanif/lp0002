@@ -3,7 +3,12 @@ name = "pmsig-membership-core"
 description = "Instruction type shared by the membership guest and its host-side callers."
 version.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+# Guest-shared crate: this is compiled inside the pinned reproducible builder
+# (risc0-guest-builder r0.1.91.1), whose guest rustc is 1.91.1-dev — older than the 1.94 host
+# toolchain the workspace pins to match LEZ v0.2.4. Declaring the workspace's 1.94 here made
+# `cargo risczero build` fail with "rustc 1.91.1-dev is not supported". This value is not a guess:
+# the reproducible build is what verifies it.
+rust-version = "1.91"
 license.workspace = true
 repository.workspace = true
 
