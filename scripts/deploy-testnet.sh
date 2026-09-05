@@ -74,7 +74,13 @@ info "testnet live at height $HEIGHT"
 
 log "checking the wallet can reach it and holds funds"
 "$WALLET" check-health >/dev/null 2>&1 || die "the wallet could not reach $RPC. Is its config pointing at the testnet?"
-CREATOR=$("$WALLET" account list 2>/dev/null | awk '/Public\//{print $2; exit}')
+# Captured whole, then parsed — never piped straight into `awk ... exit`. Rust ignores SIGPIPE, so
+# a reader that closes the pipe early makes the writer panic on its next print and exit 101, and
+# `pipefail` then reports a successful command as failed. That is exactly how this line failed in
+# CI. Keeping stderr means the next failure says what it was instead of vanishing into /dev/null.
+wallet_accounts=$("$WALLET" account list 2>&1) \
+  || die "the wallet could not list accounts: $wallet_accounts"
+CREATOR=$(printf '%s\n' "$wallet_accounts" | awk '/Public\//{print $2; exit}')
 [[ -n "$CREATOR" ]] || die "the wallet has no public account. Fund one on the testnet first."
 BAL=$(curl -s -X POST "$RPC" -H 'content-type: application/json' \
   --data "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"getAccountBalance\",\"params\":[\"$CREATOR\"]}" --max-time 20 | jq -r '.result // 0')

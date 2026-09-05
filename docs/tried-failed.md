@@ -208,3 +208,34 @@ prover-local secret material and must be treated like a private key at rest
 plaintext") for a guest's own journal on LEZ. The test now asserts what is true and load-bearing —
 the witness *is* in the inner journal, and the chain-facing output is what carries no identity —
 rather than asserting a property the platform cannot provide.
+
+## Piping a Rust program's stdout into `awk ... exit`
+
+**Symptom.** `e2e-local-sequencer.sh` died with exit 101 immediately after reporting
+`wallet has 2 shielded accounts`, with no message — 44 minutes into a CI run.
+
+**Cause.** The line was
+
+```bash
+CREATOR=$("$WALLET" account list 2>/dev/null | awk '/Public\//{print $2; exit}')
+```
+
+`awk` exits at the first match and closes the pipe. Rust ignores `SIGPIPE`, so instead of dying
+quietly the wallet panics on its next write to stdout — hence 101, not 141 — and `set -o pipefail`
+turns that into a failed pipeline. The command had in fact done its job. `2>/dev/null` then threw
+away the panic message, which is why the failure said nothing at all.
+
+**Fix.** Capture the output whole, then parse it:
+
+```bash
+wallet_accounts=$("$WALLET" account list 2>&1) || die "...: $wallet_accounts"
+CREATOR=$(printf '%s\n' "$wallet_accounts" | awk '/Public\//{print $2; exit}')
+```
+
+`awk` closing a pipe from a shell builtin is harmless.
+
+**Why it is written down.** This is the *second* time this pattern was fixed in this repository. The
+first fix was never recorded, so it came back in a different script — and the second instance sat in
+`deploy-testnet.sh` too, on the path that produces the submission's on-chain evidence. The rule:
+never pipe a Rust process into a reader that can stop early, and do not send its stderr to
+`/dev/null` on a path whose failures have to be diagnosable.

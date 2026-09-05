@@ -170,7 +170,13 @@ while (( privates < 2 )); do
 done
 info "wallet has $privates shielded accounts"
 
-CREATOR=$("$WALLET" account list 2>/dev/null | awk '/Public\//{print $2; exit}')
+# Captured whole, then parsed — never piped straight into `awk ... exit`. Rust ignores SIGPIPE, so
+# a reader that closes the pipe early makes the writer panic on its next print and exit 101, and
+# `pipefail` then reports a successful command as failed. That is exactly how this line failed in
+# CI. Keeping stderr means the next failure says what it was instead of vanishing into /dev/null.
+wallet_accounts=$("$WALLET" account list 2>&1) \
+  || die "the wallet could not list accounts: $wallet_accounts"
+CREATOR=$(printf '%s\n' "$wallet_accounts" | awk '/Public\//{print $2; exit}')
 [[ -n "$CREATOR" ]] || die "the wallet has no public account to pay with"
 info "creator: $CREATOR"
 
