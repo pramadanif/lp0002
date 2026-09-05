@@ -4,9 +4,9 @@
 - Prize source: ../lambda-prize/prizes/LP-0002.md
 - Sibling layout: intentional — easy human eval side-by-side
 - Solution repo absolute path: /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig
-- Current phase: **E (demo.sh + CI e2e)** — IN PROGRESS, 5/8 SC; composition demonstrated, demo.sh lifecycle still unimplemented
+- Current phase: **E (demo.sh + CI e2e)** — IN PROGRESS. The lifecycle *is* implemented end to end (create → propose → approve at full M → execute); what is missing is a completed unattended run.
 - Last green SC: SC-D.1–SC-D.5 (Phase D). Phase E: SC-E.3/E.5/E.7 green; E.1/E.4/E.6 not met
-- Blockers: **Phase E** — the standalone LEZ sequencer build is very large (full blockchain node + C++ groth16 stack); the e2e lifecycle step is unimplemented and fails rather than faking a pass. (#105 eligibility: operator decided 2026-09-04 to proceed through Phase I — `docs/phase-N1-status.md` §3.)
+- Blockers: **Phase E** — the `e2e-sequencer` CI job is wired (every push to `main`, not cron, not path-filtered) but has not yet completed. Each run has failed further along than the last: missing guest toolchain → missing `libpcsclite` → a SIGPIPE panic in our own script (`docs/tried-failed.md`). Every failure so far has been a real defect, and the job fails rather than faking a pass. The build itself is large: a full blockchain node plus a C++ groth16 stack, ~12 min before anything else starts. (#105 eligibility: operator decided 2026-09-04 to proceed through Phase I — `docs/phase-N1-status.md` §3.)
 
 - Remote: https://github.com/pramadanif/lp0002 (public)
 
@@ -44,6 +44,7 @@
 | ~~U-6~~ | — | **RESOLVED.** It can; `--bin-<NAME>` resolves the ChainedCall dependency |
 | ~~Recursive composition cost unmeasured~~ | — | **MEASURED.** ≈19 min 26 s, peak 8.74 GB, needs ~9 GB free RAM |
 | Verifier change rotates every `config_hash` | Phase H (limitations) | Consequence of ADR-002 |
+| Multisig program must be **redeployed** | Phase G | The INV-7 fix changed `programs/multisig-spel`, so its ImageID moved `071406d6…` → the value now in `artifacts/IMAGE_IDS.md`. On LEZ the ImageID *is* the ProgramId, so the deployed program and the recorded on-chain evidence are for a superseded binary. The **membership** ImageID is unchanged, so `config_hash` and every multisig address are stable — only the multisig program needs redeploying |
 
 ## Phase ledger
 
