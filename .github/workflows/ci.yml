@@ -60,6 +60,17 @@ jobs:
       - name: check-dev-mode-clobber.sh
         run: ./scripts/check-dev-mode-clobber.sh
 
+  basecamp-privacy:
+    name: Basecamp UI must not leak member secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The generated UI persists "recent values" via QSettings. Harmless for a config hash,
+      # catastrophic for the approval witness, which carries a member's spending key. This asserts
+      # the property rather than trusting that the generator keeps skipping Vec<u8> fields.
+      - name: check-basecamp-privacy.sh
+        run: ./scripts/check-basecamp-privacy.sh
+
   scripts-lint:
     name: shellcheck
     runs-on: ubuntu-latest

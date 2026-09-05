@@ -19,7 +19,7 @@ Guest: `programs/membership-lez` — membership + nullifier verification with li
 
 | Measurement | Value |
 |-------------|-------|
-| Guest cycles | **598,184** |
+| Guest cycles | **598,666** (measured against the deployed binary — `artifacts/cu-measured.md`) |
 | Proving time | **53.26 s** |
 | `RISC0_DEV_MODE` | **0** (asserted inside the test, not merely set) |
 | Journal size | **776 bytes** |
@@ -83,7 +83,29 @@ re-tested. Recorded rather than smoothed over.
 
 ## 2. On-chain compute units (P-P1)
 
-**Not yet measured — Phase G.** Will carry one numeric CU figure per instruction
+**Partially measured.** The instruction that actually costs anything — `approve`, the only
+privacy-preserving one — is measured against the **deployed binary**:
+
+| Instruction | Program | Cycles |
+|-------------|---------|--------|
+| `verify_approval` (chained from `approve`) | `membership` | **598,666** |
+
+Regenerate with `./scripts/measure-cu.sh`; the raw output is `artifacts/cu-measured.md`.
+
+### Why cycles
+
+LEZ runs programs in the risc0 zkVM and exposes no separate per-instruction compute counter — the
+`GasCost` in its source is the Logos-layer publish fee, not per-instruction compute. On a zkVM the
+quantity that *is* compute is the cycle count: it sets proving time, segment count, and any budget
+the chain imposes. The prize's own note that "LEZ's per-transaction compute budget may change during
+testnet" is consistent with that.
+
+### Still outstanding
+
+`create_multisig`, `create_proposal` and `execute` are **public** transactions executed directly by
+the sequencer, and their per-instruction figures are **not yet measured on a public testnet**.
+
+**Still to do — Phase G.** Will carry one numeric CU figure per instruction
 (`create_multisig`, `create_proposal`, `approve`, `execute`), measured against the live LEZ testnet
 with the deployed program.
 
