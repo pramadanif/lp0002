@@ -58,7 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // The membership verification is the expensive, security-critical path, and it is the one whose
     // cost a member actually pays. Measure it against the real binary.
-    let (claim, witness, pre_states) = approval_fixture();
+    let (claim, witness, pre_states) = approval_fixture()?;
     let cycles = pmsig_sdk::prove::execute_approval(
         &membership_bin,
         SELF_PROGRAM_ID,
@@ -90,18 +90,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn approval_fixture() -> (
-    pmsig_membership_core::ApprovalClaim,
-    ApprovalWitness,
-    Vec<AccountWithMetadata>,
-) {
+fn approval_fixture() -> Result<
+    (
+        pmsig_membership_core::ApprovalClaim,
+        ApprovalWitness,
+        Vec<AccountWithMetadata>,
+    ),
+    Box<dyn std::error::Error>,
+> {
     let vpk = ViewingPublicKey::from_seed(&[7_u8; 32], &[8_u8; 32]);
     let npks: Vec<Digest32> = [ALICE, BOB, CAROL]
         .iter()
         .map(|n| npk_of(n).to_byte_array())
         .collect();
-    let tree = MemberTree::new(&npks).expect("three members");
-    let path = tree.path(0).expect("alice");
+    let tree = MemberTree::new(&npks).ok_or("member tree needs at least one member")?;
+    let path = tree.path(0).ok_or("member 0 has no authentication path")?;
     let account_id: AccountId = derive_account_id(&npk_of(&ALICE), &vpk, 0);
 
     let claim = pmsig_membership_core::ApprovalClaim {
@@ -122,7 +125,7 @@ fn approval_fixture() -> (
         true,
         account_id,
     )];
-    (claim, witness, pre)
+    Ok((claim, witness, pre))
 }
 
 // Keeps the unused-import warning honest about what this example does not yet cover.
