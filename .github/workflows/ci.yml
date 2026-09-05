@@ -8,11 +8,11 @@ on:
 
 # No `continue-on-error` and no conditional skips anywhere in this file. Plan gate H2: a job that
 # cannot do its work must fail, never pass silently.
-# Fast jobs: a newer push makes an older run pointless, so cancel it. The e2e job overrides this
-# below — see the note there.
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+# No workflow-level `concurrency`. It was tried with cancel-in-progress, to stop superseded runs of
+# the fast jobs piling up, and it cancelled the whole run — the e2e job included, twice, at 13 and
+# at 2 minutes. A job-level group does not protect against that: cancelling a run cancels its jobs.
+# The fast jobs take well under a minute, so there is nothing worth cancelling; the e2e job has its
+# own group below to keep its runs from overlapping.
 
 env:
   CARGO_TERM_COLOR: always
@@ -75,11 +75,8 @@ jobs:
   e2e-sequencer:
     name: e2e against a real standalone LEZ sequencer
     runs-on: ubuntu-latest
-    # Opted out of the workflow-level cancel. This job builds LEZ and SPEL and then generates real
-    # proofs, so it runs for the better part of an hour; under `cancel-in-progress` every push
-    # killed it (the first run died at 13 minutes) and it could never finish during a working
-    # session. Its own group instead: runs queue behind each other rather than cancelling, so one
-    # always completes.
+    # This job builds LEZ and SPEL and then generates real proofs, so it runs for the better part of
+    # an hour. Its own group, without cancellation, so overlapping pushes queue rather than kill it.
     concurrency:
       group: e2e-${{ github.ref }}
       cancel-in-progress: false
