@@ -121,6 +121,10 @@ says so rather than reading as if it had.
 # Rust (the repo pins 1.94.0 to match logos-execution-zone v0.2.4)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
+# Linux only: the LEZ wallet links pcsc-sys, which needs libpcsclite at build time.
+# Without it ./demo.sh builds a sequencer, starts it, and then fails at the wallet.
+sudo apt-get install -y pkg-config libpcsclite-dev
+
 # risc0 — the prover. Without it nothing on the submission path will run, by design.
 curl -L https://risczero.com/install | bash && rzup install
 ```

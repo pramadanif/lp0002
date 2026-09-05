@@ -93,6 +93,12 @@ jobs:
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup
           df -h /
 
+      # The LEZ wallet links pcsc-sys (smartcard support), which needs libpcsclite at build time.
+      # Without it the run gets as far as a live sequencer producing blocks and then dies at
+      # "the LEZ wallet failed to build", 33 minutes in.
+      - name: Install LEZ build dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libpcsclite-dev
+
       - name: Install Rust toolchain
         run: |
           rustup show active-toolchain || rustup toolchain install
