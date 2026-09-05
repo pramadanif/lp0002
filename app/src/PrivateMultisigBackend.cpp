@@ -143,7 +143,16 @@ void PrivateMultisigBackend::createMultisig(const QString& creatorId, const QStr
     args["m"] = static_cast<int>(m);
     args["n"] = static_cast<int>(n);
     args["multisig_id"] = multisigId;
-    args["membership_program_id"] = membershipProgramId;
+    // A ProgramId is [u32; 8] and arrives as a QVariantList, which QJsonObject::operator[] will
+    // not take — there is no implicit conversion to QJsonValue. spel-client-gen emits this
+    // conversion for a Vec<u8> parameter (see `witness` in approve, below) but not for a
+    // fixed-size array, so this was the one call in the file that could not compile. It never
+    // showed up because the plugin had never been built.
+    {
+        QJsonArray _arr;
+        for (const QVariant& _v : membershipProgramId) _arr.append(QJsonValue::fromVariant(_v));
+        args["membership_program_id"] = _arr;
+    }
     dispatchFfi("create_multisig", [this, args]() {
         return callFfi(private_multisig_create_multisig, args);
     });

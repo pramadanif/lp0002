@@ -1,0 +1,4 @@
+set(__QT_DEPLOY_TARGET_PrivateMultisigPlugin_FILE /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig/app/build/libprivate_multisig_plugin.dylib)
+set(__QT_DEPLOY_TARGET_PrivateMultisigPlugin_TYPE SHARED_LIBRARY)
+set(__QT_DEPLOY_TARGET_PrivateMultisigApp_FILE /Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig/app/build/PrivateMultisigApp)
+set(__QT_DEPLOY_TARGET_PrivateMultisigApp_TYPE EXECUTABLE)

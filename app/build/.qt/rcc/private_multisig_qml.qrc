@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="qml/Main.qml">/Users/muhammadbaguspramadani/Documents/myproject/lp-0002-private-multisig/app/qml/Main.qml</file>
+  </qresource>
+</RCC>
+
