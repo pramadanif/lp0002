@@ -28,7 +28,7 @@ Status: ✅ evidence exists · ◐ partial · ⛔ not met
 | ID | Criterion | Status | Evidence |
 |----|-----------|--------|----------|
 | **P-U1** | Module/SDK for building Logos modules | ✅ | `pmsig-sdk` (prove + member API), `pmsig-core`, `pmsig-store`, `pmsig-cli`. Guide: `docs/integration.md`, whose code is the **compiled** example `crates/sdk/examples/integrate.rs` |
-| **P-U2** | Basecamp GUI: local build, downloadable assets, loadable | ⛔ | Not started (Phase F). No `app/`, no `.lgx`, no `module.json` |
+| **P-U2** | Basecamp GUI: local build, downloadable assets, loadable | ⛔ | `app/` exists and is generated from the IDL — QML, C++ backend, `CMakeLists.txt`, `module.yaml`, `manifest.json` — and its privacy properties are asserted by `scripts/check-basecamp-privacy.sh` in CI. **Unmet because nothing has been built or downloaded:** no `.lgx`, no SHA-256, no release asset. Blocked on Qt6, `cmake` and `lgx`, none installed ([`docs/phase-F-status.md`](phase-F-status.md)) |
 | **P-U3** | IDL for the LEZ program, using SPEL | ✅ | `artifacts/multisig-idl.json`, generated from `#[lez_program]` at compile time by `scripts/generate-idl.sh`. Independently confirmed usable: the SPEL CLI built working commands from it and submitted real transactions |
 
 ## Reliability
@@ -50,7 +50,7 @@ Status: ✅ evidence exists · ◐ partial · ⛔ not met
 | ID | Criterion | Status | Evidence |
 |----|-----------|--------|----------|
 | **P-S1** | Deployed and tested on LEZ devnet/testnet | ⛔ | Local standalone sequencer only |
-| **P-S2** | E2E tests against a LEZ sequencer (**standalone**) in CI | ⛔ | `scripts/e2e-local-sequencer.sh` drives a real standalone sequencer, but the full script has **not yet completed a run**, so the CI job is deliberately not wired — a failing job is not evidence |
+| **P-S2** | E2E tests against a LEZ sequencer (**standalone**) in CI | ◐ | The `e2e-sequencer` job runs on **every push to `main`** — not on cron, not path-filtered, no `continue-on-error` — and builds LEZ v0.2.4 and the pinned SPEL from source before proving anything. It has **not yet completed a run**, so this is not green: each attempt has failed further along than the last, every failure a real defect ([`docs/phase-E-status.md`](phase-E-status.md)) |
 | **P-S3** | CI green on the default branch | ✅ | GitHub Actions green on `main`: `fmt + clippy + tests`, `shellcheck`, `RISC0_DEV_MODE clobber check` |
 | **P-S4** | README documents E2E usage: deploy steps, addresses, CLI **and** Basecamp | ◐ | README now has an end-to-end section: prerequisites (incl. the ~9 GB memory requirement), guest build, demo, testnet deploy, public verification, CLI and Basecamp walkthroughs. **Program addresses are still absent** because nothing is deployed to public testnet — stated rather than faked |
 | **P-S5** | Reproducible `demo.sh` against a **real local sequencer** with `RISC0_DEV_MODE=0` | ◐ | `demo.sh` exists and drives a genuine standalone sequencer with `RISC0_DEV_MODE=0`; the sequencer, deployment, create, propose and one anonymous approval have all been demonstrated. **The script has not yet completed a full unattended run**, so this is not claimed green |

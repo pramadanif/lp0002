@@ -12,8 +12,21 @@
 | LEZ repo | `https://github.com/logos-blockchain/logos-execution-zone` | Prize `Resources` section |
 | LEZ latest tag | **v0.2.4** | `gh api repos/logos-blockchain/logos-execution-zone/tags` → `v0.2.4, v0.2.3, v0.2.2, v0.2.2-rc1, v0.2.1, v0.2.0` |
 | LEZ Rust channel | **1.94.0** (`profile = default`) | `rust-toolchain.toml` @ tag `v0.2.4` |
-| `risc0-zkvm` | **3.0.5** (`default-features = false`, `features = ["std"]`) | `Cargo.toml` @ `v0.2.4` line 131 |
+| `risc0-zkvm` (what **LEZ v0.2.4** pins) | **3.0.5** | `Cargo.toml` @ `v0.2.4` line 131 |
+| `risc0-zkvm` (what **this repo** uses) | **3.0.6** (`default-features = false`, `features = ["std"]`) | our `Cargo.toml` line 36; `r0vm` 3.0.6 locally and in CI |
 | `risc0-build` | **3.0.5** | `Cargo.toml` @ `v0.2.4` line 132 |
+
+**On the 3.0.5 / 3.0.6 difference.** LEZ v0.2.4 pins risc0 3.0.5; this repository builds and proves
+with 3.0.6, which is what `rzup` installs and what CI verifies (`r0vm --version` is asserted before
+the e2e runs). Both numbers appear in this repository — `risc0-binfmt = "3.0.5"` in
+`crates/guest-tools` and in the SDK's dev-dependencies — so the difference is stated here rather than
+left for a reviewer to notice and wonder about.
+
+It is not silently assumed to be safe. What makes it checkable is that ImageIDs are compared against
+LEZ's own artefacts: `crates/membership-core/tests/lez_compat.rs` asserts byte-compatibility with
+LEZ's published vectors, and `crates/sdk/tests/image_ids_match_binaries.rs` asserts that the ImageIDs
+recorded in `artifacts/IMAGE_IDS.md` are the ones the committed binaries actually have. A divergence
+in ImageID computation between the two versions would fail those, not pass quietly.
 | SPEL repo | `https://github.com/logos-co/spel` | Prize `Success Criteria → Usability` (IDL requirement) |
 | SPEL latest tag | **v0.6.0** — *not used, pins LEZ v0.2.0* | `gh api repos/logos-co/spel/tags` → `v0.6.0, v0.6.0-rc.2, v0.6.0-rc.1, v0.5.0, v0.5.0-rc.1` |
 | **SPEL pin used** | **`main` @ `5126b7ed8a9b`** (2026-09-04T06:48:20Z) — pins LEZ `v0.2.4` | `gh api repos/logos-co/spel/contents/spel-framework/Cargo.toml?ref=main` |

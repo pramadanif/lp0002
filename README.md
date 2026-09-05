@@ -8,11 +8,21 @@ Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0*
 
 Repository: <https://github.com/pramadanif/lp0002>
 
-> **Status: Phase D of 10 complete.** The membership guest proves and verifies for real
-> (`RISC0_DEV_MODE=0`, 53.26 s on a laptop) and the on-chain SPEL program enforces the full
-> lifecycle with a published IDL. The end-to-end privacy-preserving composition has **not** been
-> demonstrated against a running sequencer yet, the demo is not written, and nothing here has touched
-> testnet. See [Build status](#build-status) for exactly what exists.
+> **Status: phases −1 through D complete; E and F in progress.** The membership guest proves and
+> verifies for real (`RISC0_DEV_MODE=0`, 53.26 s on a laptop); the on-chain SPEL program enforces the
+> full lifecycle with a published IDL; and the privacy-preserving composition **has** been
+> demonstrated — an anonymous approval proved and confirmed on a real standalone sequencer, ≈19 min
+> and 8.74 GB (`artifacts/phase-E-ppe-approve-SUCCESS.txt`).
+>
+> **Not yet done**, and not claimed: no completed unattended `./demo.sh` run, so **P-S5** is not
+> claimed; the `e2e-sequencer` CI job runs on every push to `main` but has not yet gone green, so
+> **P-S2** is not claimed; nothing is deployed to the public testnet, so **P-F6/P-F7/P-S1** and the
+> on-chain CU figures for **P-P1** are unmet; the Basecamp module is generated but no `.lgx` is
+> built (**P-U2**); and there is no narrated video (**P-S6**).
+>
+> [Build status](#build-status) has the per-phase detail;
+> [`docs/criteria-checklist.md`](docs/criteria-checklist.md) maps every criterion to its evidence,
+> including what is missing.
 
 ---
 

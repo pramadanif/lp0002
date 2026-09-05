@@ -61,7 +61,7 @@ present, and a video.** Substance beyond that was never the deciding factor for 
 
 | Killer | Our status | Note |
 |--------|-----------|------|
-| CI runs real LEZ sequencer e2e, green | ⛔ **not wired** | The job is deliberately absent: a failing job is not evidence. This is our **largest** gap and matches the **#1** rejection cause |
+| CI runs real LEZ sequencer e2e, green | ◐ **wired, not yet green** | `e2e-sequencer` runs on every push to `main`, not on cron and not path-filtered (the shape #125 was pulled up for). It has not completed a run, so nothing is claimed. The earlier reasoning here — that the job should stay absent because a failing job is not evidence — was backwards: the job is what tells you whether the script passes, and keeping it out hid three real defects. This is still our **largest** gap and matches the **#1** rejection cause |
 | Testnet evidence, live explorer links | ⛔ **nothing deployed** | Funding is solved (`fund-testnet.sh`); deployment is not |
 | CU cost | ◐ **partial** | Client proving measured (598,666 cycles; 53 s; composed ≈19 min). On-chain per-instruction figures need testnet |
 | `demo.sh` genuinely DEV_MODE=0 | ◐ | Set at the entrypoint, never in a child. `check-dev-mode-clobber.sh` enforces exactly the #97 failure, and is mutation-tested. But the script has not completed an unattended run |

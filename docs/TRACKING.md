@@ -44,7 +44,7 @@
 | ~~U-6~~ | — | **RESOLVED.** It can; `--bin-<NAME>` resolves the ChainedCall dependency |
 | ~~Recursive composition cost unmeasured~~ | — | **MEASURED.** ≈19 min 26 s, peak 8.74 GB, needs ~9 GB free RAM |
 | Verifier change rotates every `config_hash` | Phase H (limitations) | Consequence of ADR-002 |
-| Multisig program must be **redeployed** | Phase G | The INV-7 fix changed `programs/multisig-spel`, so its ImageID moved `071406d6…` → the value now in `artifacts/IMAGE_IDS.md`. On LEZ the ImageID *is* the ProgramId, so the deployed program and the recorded on-chain evidence are for a superseded binary. The **membership** ImageID is unchanged, so `config_hash` and every multisig address are stable — only the multisig program needs redeploying |
+| **Both** programs must be redeployed before any evidence is pinned | Phase G | `artifacts/phase-E-*.txt` records ImageIDs `821c23d9…` (membership) and `cee07cd3…` (multisig). Neither matches `artifacts/IMAGE_IDS.md` today (`f5cc9f37…`, `94bc1426…`). On LEZ the ImageID *is* the ProgramId, so **every** recorded on-chain result is for a superseded binary, and `config_hash` — which commits to the membership program id (ADR-002) — changes with it, moving every multisig address. An earlier version of this row said the membership ImageID was unchanged; that was true only of the INV-7 rebuild on 2026-09-05, not of the Phase E evidence, and reading it as "the membership evidence still stands" would have been wrong |
 
 ## Phase ledger
 
