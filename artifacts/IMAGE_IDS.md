@@ -11,38 +11,7 @@ changes every multisig address.
 
 | | |
 |-|-|
-| Built | 2026-09-05T04:08:54Z |
-| Commit | `45b7d34` |
+| Built | 2026-09-05T09:32:36Z |
+| Commit | `d6fcf93` |
 | risc0 | risc0-r0vm 3.0.6 |
 | LEZ | v0.2.4 (see docs/VERSIONS.md) |
-
-## `membership`
-
-| Field | Value |
-|-------|-------|
-| Crate | `programs/membership-lez` |
-| Build | local toolchain — NOT reproducible, do not deploy or quote in a submission |
-| ImageID | `f5cc9f3778fe5ccedd48726f20e0b4cfd7d2384f0bb7e130dbe5f4bf42ea87c1` |
-| ProgramId (u32×8) | `[933219573, 3462200952, 1869760733, 3484737568, 1329124055, 820098827, 3220497883, 3246910018]` |
-| Binary | `artifacts/membership.bin` |
-| Binary size | 373888 bytes |
-| SHA-256 | `69d3f49d631fc625def27a48e8dab57f544b754125e215159c18c2044ad28100` |
-
-## `multisig`
-
-| Field | Value |
-|-------|-------|
-| Crate | `programs/multisig-spel` |
-| Build | local toolchain — NOT reproducible, do not deploy or quote in a submission |
-| ImageID | `94bc142622d56e14aa687f3c072e40cdc0a5becf7cd39340322a3a2c2cd98e4a` |
-| ProgramId (u32×8) | `[638893204, 342807842, 1014982826, 3443535367, 3485377984, 1083429756, 742009394, 1250875692]` |
-| Binary | `artifacts/multisig.bin` |
-| Binary size | 482412 bytes |
-| SHA-256 | `8cb6386fee76b1fa3bf00cd26bf551249ec670b691e7639801975dcc6c4e5cce` |
-
-## Reproducing
-
-```bash
-./scripts/build-guests.sh --docker    # reproducible; what a deployed binary must come from
-./scripts/build-guests.sh             # local toolchain; development only
-```

@@ -47,9 +47,28 @@ build_one() { # name, dir, bin
   local name="$1" dir="$2" bin="$3" elf kind
   if [[ "$MODE" == "docker" ]]; then
     echo "==> building $name reproducibly (container $RISC0_DOCKER_CONTAINER_TAG)"
+    # `cargo risczero build` takes --manifest-path and -p, but NOT --bin. Passing it made this
+    # branch exit non-zero every time with "unexpected argument '--bin' found", which is why
+    # IMAGE_IDS.md has only ever recorded local, non-reproducible builds.
     RISC0_DOCKER_CONTAINER_TAG="$RISC0_DOCKER_CONTAINER_TAG" \
-      cargo risczero build --manifest-path "$dir/Cargo.toml" --bin "$bin"
-    elf=$(find "$dir/target" -path "*$TARGET/docker/*.bin" -type f | head -1)
+      cargo risczero build --manifest-path "$dir/Cargo.toml" \
+      || { echo "FATAL: reproducible build of $name failed" >&2; exit 1; }
+
+    # It builds every bin in the package, so the ELF is selected by name. The previous
+    # `find … -name '*.bin' | head -1` would have taken whichever the filesystem returned first —
+    # and programs/multisig-spel has two bins, `idl` and `multisig`, so that could silently have
+    # packaged and deployed the wrong program.
+    local matches
+    matches=$(find "$dir/target" -path "*$TARGET/docker/*" -type f \
+                \( -name "$bin" -o -name "$bin.bin" \) | sort -u)
+    local count
+    count=$(printf '%s\n' "$matches" | grep -c . || true)
+    if [[ "$count" -ne 1 ]]; then
+      echo "FATAL: expected exactly one built ELF named '$bin' under $dir/target, found $count:" >&2
+      printf '  %s\n' $matches >&2
+      exit 1
+    fi
+    elf="$matches"
     kind="reproducible (cargo risczero build, container $RISC0_DOCKER_CONTAINER_TAG)"
   else
     echo "==> building $name with the local toolchain (NOT reproducible)"
