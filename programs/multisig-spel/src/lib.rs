@@ -173,12 +173,22 @@ mod private_multisig {
         Ok(SpelOutput::execute(vec![config, proposal, approver], vec![call]))
     }
 
-    /// Executes a proposal that has reached its threshold, moving treasury funds.
+    /// Executes a proposal that has reached its threshold.
+    ///
+    /// **INV-7 — the transfer that executes is the transfer that was approved.** The approvals
+    /// cover the *proposal*, and the proposal names an amount and a recipient. Everything else
+    /// about the transaction is chosen by whoever submits it, so both ends of the transfer are
+    /// pinned here:
+    ///
+    /// * The funds leave the multisig's own config PDA. An earlier revision took a caller-supplied
+    ///   `treasury` account, which nothing tied to the multisig.
+    /// * `recipient` must be the account the proposal named. An earlier revision destructured the
+    ///   action as `{ amount, .. }`, discarding the approved recipient, so the submitter could
+    ///   redirect an approved payment to themselves and the approvals would still verify.
     #[instruction]
     pub fn execute(
-        #[account(pda = arg("config_hash"))] config: AccountWithMetadata,
+        #[account(mut, pda = arg("config_hash"))] config: AccountWithMetadata,
         #[account(mut, pda = arg("proposal_seed"))] proposal: AccountWithMetadata,
-        #[account(mut)] treasury: AccountWithMetadata,
         #[account(mut)] recipient: AccountWithMetadata,
         config_hash: [u8; 32],
         proposal_seed: [u8; 32],
@@ -186,14 +196,19 @@ mod private_multisig {
         let state = decode_config(&config)?;
         let mut proposal_state = decode_proposal(&proposal)?;
 
-        let action = logic::execute(&state, &config_hash, &mut proposal_state)
-            .map_err(err)?;
+        let action = logic::execute(&state, &config_hash, &mut proposal_state).map_err(err)?;
+        let ProposedAction::TreasuryTransfer {
+            recipient: approved,
+            amount,
+        } = action;
 
-        let ProposedAction::TreasuryTransfer { amount, .. } = action;
+        if recipient.account_id != AccountId::new(approved) {
+            return Err(err(pmsig_multisig_core::MultisigError::InvalidProposalAction));
+        }
 
-        let mut treasury = treasury.clone();
+        let mut config = with_data(&config, &state)?;
         let mut recipient = recipient.clone();
-        treasury.account.balance = treasury
+        config.account.balance = config
             .account
             .balance
             .checked_sub(amount)
@@ -205,10 +220,7 @@ mod private_multisig {
             .ok_or_else(|| err(pmsig_multisig_core::MultisigError::InvalidProposalAction))?;
 
         let proposal = with_data(&proposal, &proposal_state)?;
-        Ok(SpelOutput::execute(
-            vec![config, proposal, treasury, recipient],
-            vec![],
-        ))
+        Ok(SpelOutput::execute(vec![config, proposal, recipient], vec![]))
     }
 
     fn decode_config(account: &AccountWithMetadata) -> Result<MultisigConfig, SpelError> {

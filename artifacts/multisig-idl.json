@@ -242,7 +242,7 @@
       "accounts": [
         {
           "name": "config",
-          "writable": false,
+          "writable": true,
           "signer": false,
           "init": false,
           "pda": {
@@ -267,12 +267,6 @@
               }
             ]
           }
-        },
-        {
-          "name": "treasury",
-          "writable": true,
-          "signer": false,
-          "init": false
         },
         {
           "name": "recipient",
@@ -305,5 +299,6 @@
   ],
   "accounts": [],
   "types": [],
-  "errors": []
+  "errors": [],
+  "instruction_type": "pmsig_multisig_core::Instruction"
 }

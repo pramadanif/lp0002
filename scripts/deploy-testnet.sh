@@ -124,9 +124,11 @@ TX_CREATE=$(run_ix create -- create-multisig \
 info "tx $TX_CREATE"
 
 log "create_proposal (treasury transfer)"
+# One variable for both steps: `execute` refuses a recipient the proposal did not name (INV-7).
+RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 TX_PROPOSE=$(run_ix propose -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
-  --recipient c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3 \
+  --recipient "$RECIPIENT" \
   --amount 1000 --proposer "$CREATOR")
 info "tx $TX_PROPOSE"
 
@@ -151,7 +153,7 @@ done
 log "execute (threshold reached at FULL M)"
 TX_EXECUTE=$(run_ix execute -- execute \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
-  --treasury "$CREATOR" --recipient "$CREATOR")
+  --recipient "$RECIPIENT")
 info "tx $TX_EXECUTE"
 
 # ─── evidence ───────────────────────────────────────────────────────────────────────────────────

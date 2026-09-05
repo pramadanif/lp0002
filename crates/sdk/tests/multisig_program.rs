@@ -576,3 +576,133 @@ fn program_output_passes_lez_own_execution_validation() {
 /// Sanity: the receipt type is in scope, so this file compiles against the same risc0 the SDK uses.
 #[allow(dead_code)]
 fn _type_anchor(_: Receipt) {}
+
+/// Builds an account carrying a balance, for the treasury/recipient slots of `execute`.
+fn funded(id: AccountId, balance: u128) -> AccountWithMetadata {
+    let a = Account {
+        balance,
+        ..Account::default()
+    };
+    AccountWithMetadata::new(a, false, id)
+}
+
+/// Shared fixture for the `execute` tests: a 1-of-3 whose single proposal has met its threshold and
+/// is payable to `RECIPIENT`.
+fn executable_proposal() -> (ProgramId, Digest32, Digest32, MultisigConfig, Proposal) {
+    let pid = program_id();
+    let tree = member_tree();
+    let config_hash = pmsig_core::config_hash(&tree.root(), 1, 3, &MULTISIG_ID, &pid);
+    let proposal_seed = pmsig_core::proposal_seed(&config_hash, &PROPOSAL_ID);
+    let cfg = MultisigConfig {
+        version: pmsig_core::STATE_VERSION,
+        member_root: tree.root(),
+        m: 1,
+        n: 3,
+        multisig_id: MULTISIG_ID,
+        membership_program_id: pid,
+        proposal_count: 1,
+    };
+    let prop = Proposal {
+        version: pmsig_core::STATE_VERSION,
+        config_hash,
+        proposal_id: PROPOSAL_ID,
+        action: pmsig_multisig_core::ProposedAction::TreasuryTransfer {
+            recipient: RECIPIENT,
+            amount: 1000,
+        },
+        nullifiers: vec![approval_nullifier(&ALICE, &MULTISIG_ID, &PROPOSAL_ID)],
+        executed: false,
+    };
+    (pid, config_hash, proposal_seed, cfg, prop)
+}
+
+fn execute_accounts(
+    pid: ProgramId,
+    config_hash: Digest32,
+    proposal_seed: Digest32,
+    cfg: &MultisigConfig,
+    prop: &Proposal,
+    recipient_id: AccountId,
+) -> Vec<AccountWithMetadata> {
+    // The multisig's funds sit in its own config PDA — there is no caller-supplied treasury slot
+    // (INV-7), so the config account is the one carrying a balance.
+    let mut config = account(
+        pid,
+        borsh::to_vec(cfg).unwrap(),
+        public_pda(&pid, &config_hash),
+        false,
+    );
+    config.account.balance = 5_000;
+    vec![
+        config,
+        account(
+            pid,
+            borsh::to_vec(prop).unwrap(),
+            public_pda(&pid, &proposal_seed),
+            false,
+        ),
+        funded(recipient_id, 0),
+    ]
+}
+
+/// The happy path: a proposal at threshold pays the account it named.
+#[test]
+fn execute_pays_the_proposals_recipient() {
+    let (pid, config_hash, proposal_seed, cfg, prop) = executable_proposal();
+    let out = run(
+        execute_accounts(
+            pid,
+            config_hash,
+            proposal_seed,
+            &cfg,
+            &prop,
+            AccountId::new(RECIPIENT),
+        ),
+        &Instruction::Execute {
+            config_hash,
+            proposal_seed,
+        },
+    )
+    .expect("a proposal at threshold must execute");
+
+    // `execute` writes back `[config, proposal, recipient]`.
+    assert_eq!(
+        out.post_states[2].account().balance,
+        1000,
+        "the named recipient must receive the approved amount"
+    );
+    assert_eq!(
+        out.post_states[0].account().balance,
+        4_000,
+        "the multisig's own account must be debited by exactly that amount"
+    );
+    let after: Proposal =
+        borsh::from_slice(out.post_states[1].account().data.as_ref()).expect("proposal decodes");
+    assert!(after.executed, "the proposal must be marked executed");
+}
+
+/// **Security regression (INV-7).** The members approved paying `RECIPIENT`. Whoever submits the
+/// `execute` transaction chooses which account sits in the recipient slot, so the program must
+/// check that account against the action the proposal actually carries — otherwise a submitter
+/// redirects an approved payment to themselves and the approval covers a transfer that never
+/// happened. Nothing else can catch this: the members' signatures are over the proposal, and the
+/// proposal is unchanged.
+#[test]
+fn execute_refuses_a_recipient_the_proposal_did_not_name() {
+    let (pid, config_hash, proposal_seed, cfg, prop) = executable_proposal();
+    let mallory = AccountId::new([0x66; 32]);
+    assert_ne!(mallory, AccountId::new(RECIPIENT));
+
+    let err = run(
+        execute_accounts(pid, config_hash, proposal_seed, &cfg, &prop, mallory),
+        &Instruction::Execute {
+            config_hash,
+            proposal_seed,
+        },
+    )
+    .expect_err(
+        "PAYMENT REDIRECTION: execute paid an account the proposal never named. The approved \
+         action was a transfer to RECIPIENT.",
+    );
+    assert_program_error(&err, 1012, "InvalidProposalAction");
+}

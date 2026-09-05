@@ -11,8 +11,8 @@ changes every multisig address.
 
 | | |
 |-|-|
-| Built | 2026-09-04T14:52:10Z |
-| Commit | `05f090d` |
+| Built | 2026-09-05T03:21:53Z |
+| Commit | `9102375` |
 | risc0 | risc0-r0vm 3.0.6 |
 | LEZ | v0.2.4 (see docs/VERSIONS.md) |
 
@@ -34,11 +34,11 @@ changes every multisig address.
 |-------|-------|
 | Crate | `programs/multisig-spel` |
 | Build | local toolchain — NOT reproducible, do not deploy or quote in a submission |
-| ImageID | `071406d6ab71cee91587357848c89c731f20873d36623a6aa18eb0d7c5a348cd` |
-| ProgramId (u32×8) | `[3590722567, 3922620843, 2016773909, 1939654728, 1032265759, 1782211126, 3618672289, 3444089797]` |
+| ImageID | `94bc142622d56e14aa687f3c072e40cdc0a5becf7cd39340322a3a2c2cd98e4a` |
+| ProgramId (u32×8) | `[638893204, 342807842, 1014982826, 3443535367, 3485377984, 1083429756, 742009394, 1250875692]` |
 | Binary | `artifacts/multisig.bin` |
-| Binary size | 483320 bytes |
-| SHA-256 | `cf0a165f992da11ac1bdb4f088a37c6f343086d296efa8b88abf23ab681ac17f` |
+| Binary size | 482412 bytes |
+| SHA-256 | `8cb6386fee76b1fa3bf00cd26bf551249ec670b691e7639801975dcc6c4e5cce` |
 
 ## Reproducing
 

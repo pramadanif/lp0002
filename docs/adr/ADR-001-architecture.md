@@ -241,14 +241,26 @@ under the old root, because the old root yields a different PDA.
 **INV-6 — execution requires the threshold.** `execute` asserts `approvals >= M` where `M` is read
 from the config account validated by INV-3, and sets an `executed` flag checked on entry.
 
+**INV-7 — the transfer that executes is the transfer that was approved.** The approvals cover the
+*proposal*, and the proposal names an amount and a recipient; every other part of the `execute`
+transaction is chosen by whoever submits it. So `execute` pins both ends of the transfer: the funds
+leave the multisig's own config PDA, and the account in the recipient slot must equal the recipient
+the proposal named, or the call is refused with `1012 InvalidProposalAction`.
+
+Both halves were missing. `execute` took a caller-supplied `treasury` account that nothing tied to
+the multisig, and destructured the approved action as `{ amount, .. }` — discarding the recipient —
+so a submitter could redirect an approved payment to themselves while the approvals still verified.
+The caller-supplied treasury slot is gone, and
+`execute_refuses_a_recipient_the_proposal_did_not_name` fails if the binding is removed.
+
 ## 5. Account model
 
 | Account | Kind | Address | Holds |
 |---------|------|---------|-------|
-| Multisig config | public PDA | `for_public_pda(program_id, config_hash)` | `member_root`, `M`, `N`, `multisig_id`, treasury id, proposal counter |
+| Multisig config | public PDA | `for_public_pda(program_id, config_hash)` | `member_root`, `M`, `N`, `multisig_id`, `membership_program_id`, proposal counter — **and the multisig's balance**: this account *is* the treasury (INV-7) |
 | Proposal | public PDA | `for_public_pda(program_id, proposal_pda_seed)` | `config_hash`, `proposal_id`, action, approval count, **nullifier set**, `executed` |
 | Member account | shielded, regular private | `for_regular_private_account(npk, vpk, identifier)` | the member's own funds/state; touched as `PrivateAuthorizedUpdate` when approving |
-| Treasury | public or shielded | per configuration | the assets the reference transfer moves |
+| Recipient | public | named by the proposal | receives the transfer; checked against the proposal on `execute` (INV-7) |
 
 The proposal account stores **nullifiers, never member identities** (SC-C.6, P-F2).
 

@@ -177,8 +177,17 @@ else
   bad "PF-10" "verify-onchain.sh exited non-zero against the published deployment"
 fi
 
-# PF-11 — pinned guest ImageIDs
+# PF-11 — pinned guest ImageIDs, and the binaries they fingerprint are not stale
 need_file "PF-11" "artifacts/IMAGE_IDS.md" "artifacts/IMAGE_IDS.md present and non-empty"
+
+# An ImageID pins whichever binary was committed; it says nothing about whether that binary was
+# built from the source now in the repo. A stale binary means the deployed program, the ImageIDs
+# quoted in the submission and the executor tests all describe code the reviewer cannot see.
+if ./scripts/check-guests-fresh.sh >/dev/null 2>&1; then
+  ok "PF-11" "committed guest binaries are at least as new as their sources"
+else
+  bad "PF-11" "a committed guest binary is stale — run ./scripts/check-guests-fresh.sh"
+fi
 
 # PF-12 — narrated video link + transcript
 vid_src=""

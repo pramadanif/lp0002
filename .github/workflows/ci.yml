@@ -60,6 +60,18 @@ jobs:
       - name: check-dev-mode-clobber.sh
         run: ./scripts/check-dev-mode-clobber.sh
 
+  guests-fresh:
+    name: committed guest binaries match their sources
+    runs-on: ubuntu-latest
+    steps:
+      # Needs full history: the check compares the newest commit touching each binary against the
+      # newest commit touching its sources, and a shallow clone has neither.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: check-guests-fresh.sh
+        run: ./scripts/check-guests-fresh.sh
+
   basecamp-privacy:
     name: Basecamp UI must not leak member secrets
     runs-on: ubuntu-latest
