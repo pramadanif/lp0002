@@ -253,6 +253,7 @@ Everything a reviewer needs, in the order it is usually wanted.
 | [`docs/VERSIONS.md`](docs/VERSIONS.md) | Every pinned version, and how each pin was established by measurement |
 | [`docs/why-logos.md`](docs/why-logos.md) | Why this belongs on Logos rather than a general-purpose chain |
 | [`docs/PR_SUBMISSION_GUIDE.md`](docs/PR_SUBMISSION_GUIDE.md) | How the prize PR is opened, and what must be true first |
+| [`docs/agent-gap-brief.md`](docs/agent-gap-brief.md) | What is still missing before submission, checked by command |
 | [`docs/plan/`](docs/plan/README.md) | Verbatim copies of the prize text and the build plan this follows |
 
 ## Repository layout
