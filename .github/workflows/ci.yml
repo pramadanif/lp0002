@@ -164,6 +164,20 @@ jobs:
       - name: check-links.sh
         run: ./scripts/check-links.sh
 
+  explorer-links:
+    name: evidence URLs resolve
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # W2. Until Phase G deploys something there is no docs/DEPLOYMENT.md and the script says so
+      # loudly and exits 0 — it reports "nothing to check", never "checks passed". Wired now rather
+      # than at submission time because that is precisely when it would be forgotten, and when it
+      # matters most: the testnet is wiped periodically, so evidence links rot on their own.
+      # Preflight PF-09/PF-10 stay PENDING meanwhile, so a green job here cannot be mistaken for
+      # readiness.
+      - name: check-explorer-links.sh
+        run: ./scripts/check-explorer-links.sh
+
   basecamp-privacy:
     name: Basecamp UI must not leak member secrets
     runs-on: ubuntu-latest
@@ -186,9 +200,8 @@ jobs:
         run: shellcheck -S warning scripts/*.sh $( [ -f demo.sh ] && echo demo.sh )
 
 # Jobs added by later phases (tracked so their absence is visible, not forgotten):
-#   e2e-sequencer  — Phase E. Full lifecycle against a standalone LEZ sequencer with
-#                    RISC0_DEV_MODE=0, gated on push to main (plan gates H4 / W14; preflight PF-05).
-#   explorer-links — Phase G. Fails when any evidence URL 404s or returns a null result (W2).
 #   preflight      — Phase H. Runs scripts/preflight-submission.sh, which exits 1 until every
 #                    check passes; it is deliberately NOT wired yet because it must stay red
 #                    until the submission packet is real.
+#
+# e2e-sequencer and explorer-links were on this list and are now real jobs above.
