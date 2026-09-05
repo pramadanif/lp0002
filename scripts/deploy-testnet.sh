@@ -144,14 +144,36 @@ for i in 0 1; do
   a="MEMBER${i}_ACCOUNT"; n="MEMBER${i}_NULLIFIER"; w="MEMBER${i}_WITNESS"
   log "approve $((i+1)) of 2 — anonymous, privacy-preserving, RISC0_DEV_MODE=$RISC0_DEV_MODE"
   info "expect ~20 minutes and ~9 GB of free RAM; it is not hung"
-  tx=$("$SPEL" --idl "$REPO/artifacts/multisig-idl.json" -p "$REPO/artifacts/multisig.bin" \
-        --bin-membership "$REPO/artifacts/membership.bin" -- \
-        approve --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
-        --member-root "$MEMBER_ROOT" --claimed-nullifier "${!n}" \
-        --witness "$(cat "${!w}")" --approver "Private/${!a}" \
-        2>&1 | tee "$OUT/approve$i.log" | awk '/tx_hash/{print $2; exit}') \
+
+  # Written to a file and parsed afterwards, never piped into `awk ... exit`. awk stops at the
+  # first match and closes the pipe; Rust ignores SIGPIPE, so the prover panics on its next write
+  # and exits 101 — a successful approval reported as a failure, on the path that produces the
+  # submission's on-chain evidence. See docs/tried-failed.md; this was the third instance.
+  started=$(date +%s)
+  "$SPEL" --idl "$REPO/artifacts/multisig-idl.json" -p "$REPO/artifacts/multisig.bin" \
+    --bin-membership "$REPO/artifacts/membership.bin" -- \
+    approve --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
+    --member-root "$MEMBER_ROOT" --claimed-nullifier "${!n}" \
+    --witness "$(cat "${!w}")" --approver "Private/${!a}" \
+    > "$OUT/approve$i.log" 2>&1 &
+  spel_pid=$!
+
+  # A silent twenty-minute step is indistinguishable from a hang. The r0vm RSS is the honest signal
+  # that real proving is happening — dev mode would show none of it.
+  while kill -0 "$spel_pid" 2>/dev/null; do
+    sleep 60
+    kill -0 "$spel_pid" 2>/dev/null || break
+    hb_min=$(( ($(date +%s) - started) / 60 ))
+    hb_rss=$(ps -A -o rss=,comm= 2>/dev/null \
+             | awk '/r0vm/ {s += $1} END {if (s > 0) printf "%.1f GB", s/1048576}')
+    info "    … ${hb_min} min${hb_rss:+, r0vm ${hb_rss}}"
+  done
+
+  wait "$spel_pid" \
     || { tail -25 "$OUT/approve$i.log" >&2; die "approval $((i+1)) failed"; }
   grep -q 'confirmed' "$OUT/approve$i.log" || die "approval $((i+1)) was not confirmed"
+  tx=$(awk '/tx_hash/{print $2; exit}' "$OUT/approve$i.log")
+  [[ -n "$tx" ]] || die "approval $((i+1)) confirmed but no tx_hash in $OUT/approve$i.log"
   TX_APPROVE+=("$tx")
   info "tx $tx"
 done

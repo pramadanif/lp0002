@@ -234,8 +234,19 @@ CREATOR=$(printf '%s\n' "$wallet_accounts" | awk '/Public\//{print $2; exit}')
 
 `awk` closing a pipe from a shell builtin is harmless.
 
-**Why it is written down.** This is the *second* time this pattern was fixed in this repository. The
-first fix was never recorded, so it came back in a different script — and the second instance sat in
-`deploy-testnet.sh` too, on the path that produces the submission's on-chain evidence. The rule:
-never pipe a Rust process into a reader that can stop early, and do not send its stderr to
-`/dev/null` on a path whose failures have to be diagnosable.
+**Why it is written down.** This is the *second and third* time this pattern was fixed here. The
+first fix was never recorded, so it came back — twice. The third instance was the worst of them:
+
+```bash
+tx=$("$SPEL" ... 2>&1 | tee "$OUT/approve$i.log" | awk '/tx_hash/{print $2; exit}')
+```
+
+That is the **approval step of `deploy-testnet.sh`**, the path that produces the submission's
+on-chain evidence, and it is worse than the others in two ways. It is nondeterministic — whether
+`awk` closes the pipe before the prover's last write depends on how much output follows the
+`tx_hash` line — and the failure it produces is a *successful twenty-minute approval reported as a
+failure*.
+
+**The rule.** Never pipe a Rust process into a reader that can stop early — `awk ... exit`,
+`head -n`, `grep -q`, `grep -m1`. Write to a file and parse the file. And do not send stderr to
+`/dev/null` on any path whose failures have to be diagnosable.

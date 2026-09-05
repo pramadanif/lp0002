@@ -246,7 +246,25 @@ for i in 0 1; do
     approve --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
     --member-root "$MEMBER_ROOT" --claimed-nullifier "$nf" \
     --witness "$(cat "$wit_file")" --approver "Private/$acct" \
-    > "$RUN_DIR/approve$i.log" 2>&1 \
+    > "$RUN_DIR/approve$i.log" 2>&1 &
+  spel_pid=$!
+
+  # Heartbeat. Everything above prints as it goes; this step then produces nothing for twenty
+  # minutes, which is indistinguishable from a hang — to a reviewer running ./demo.sh, to anyone
+  # watching the video, and to us reading a CI job that had been "in progress" for an hour with no
+  # way to tell proving from stuck. The r0vm RSS is the honest signal that real work is happening:
+  # a composed approval peaks around 9 GB (docs/cu-costs.md), and dev mode would show none of it.
+  while kill -0 "$spel_pid" 2>/dev/null; do
+    sleep 60
+    kill -0 "$spel_pid" 2>/dev/null || break
+    hb_min=$(( ($(date +%s) - started) / 60 ))
+    hb_rss=$(ps -A -o rss=,comm= 2>/dev/null \
+             | awk '/r0vm/ {s += $1} END {if (s > 0) printf "%.1f GB", s/1048576}')
+    hb_last=$(tail -n 1 "$RUN_DIR/approve$i.log" 2>/dev/null | tr -d '\r' | cut -c1-80)
+    info "    … ${hb_min} min${hb_rss:+, r0vm ${hb_rss}}${hb_last:+ — ${hb_last}}"
+  done
+
+  wait "$spel_pid" \
     || { tail -25 "$RUN_DIR/approve$i.log" >&2; die "approval $((i+1)) failed"; }
   grep -q 'confirmed' "$RUN_DIR/approve$i.log" || die "approval $((i+1)) was not confirmed"
   info "approval $((i+1)) confirmed in $(( ($(date +%s)-started)/60 )) min"
