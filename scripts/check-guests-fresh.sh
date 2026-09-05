@@ -21,6 +21,19 @@
 # guest's sources is newer than the newest commit touching its binary, the binary cannot contain
 # those sources.
 #
+# WHY IMAGE_IDS.md COUNTS AS PART OF THE ARTEFACT
+#
+# A source change that touches only test code — an inline `#[cfg(test)]` module, say — does not
+# change the guest, so a rebuild is byte-identical, so git has nothing to commit, so the binary's
+# last commit never moves and this gate stays red forever. That is a deadlock, and it happened.
+#
+# Rebuilding always rewrites artifacts/IMAGE_IDS.md, whose `Built` timestamp and `Commit` field move
+# even when the ImageID does not. So the freshness of a guest is judged on the newer of its binary
+# and that record: the pair says "someone rebuilt after the last source change", which is the
+# property actually wanted. Editing the record by hand to silence this does not help — the ImageID
+# it names must equal the committed binary's, which
+# crates/sdk/tests/image_ids_match_binaries.rs checks.
+#
 # Exit 0 = every binary is at least as new as its sources. Non-zero = stale, or the comparison
 # cannot be trusted.
 
@@ -63,6 +76,10 @@ for entry in "${GUESTS[@]}"; do
   fi
 
   bin_ts=$(git log -1 --format=%ct -- "$bin" 2>/dev/null || true)
+  ids_ts=$(git log -1 --format=%ct -- artifacts/IMAGE_IDS.md 2>/dev/null || true)
+  if [[ -n "$ids_ts" && ( -z "$bin_ts" || "$ids_ts" -gt "$bin_ts" ) ]]; then
+    bin_ts="$ids_ts"
+  fi
   # shellcheck disable=SC2086
   src_ts=$(git log -1 --format=%ct -- $srcs 2>/dev/null || true)
 
@@ -80,6 +97,7 @@ for entry in "${GUESTS[@]}"; do
   if (( src_ts > bin_ts )); then
     echo "FAIL: $bin is STALE." >&2
     echo "      binary last committed : $(git log -1 --format='%h %ad %s' --date=short -- "$bin")" >&2
+    echo "      IMAGE_IDS.md          : $(git log -1 --format='%h %ad %s' --date=short -- artifacts/IMAGE_IDS.md)" >&2
     # shellcheck disable=SC2086
     echo "      sources last committed: $(git log -1 --format='%h %ad %s' --date=short -- $srcs)" >&2
     echo "      The tests and any deployment would run a program that is not the one in this repo." >&2
