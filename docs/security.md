@@ -125,6 +125,8 @@ path sets it to 1 (gate H3, the pattern that sank prize PR #97).
 | Replay an approval from a spent account | rejected | Commitment no longer in the live set; LEZ nullifier already used |
 | Execute below threshold | rejected | `approvals >= M` against INV-3-validated config (INV-6) |
 | Execute twice | rejected | `executed` flag |
+| **Redirect an approved transfer to another account** | rejected | `execute` compares the recipient account against the one the proposal named and refuses otherwise (**INV-7**, error 1012 / `7012` on chain). The submitter chooses the accounts in the transaction; the approvals cover only the proposal, so the two must be tied together explicitly. This was a real hole — `execute` destructured the approved action as `{ amount, .. }` and discarded the recipient — found by running the program through the executor, and it is now a regression test |
+| **Pay out of an account the multisig does not control** | unsupported | There is no caller-supplied treasury account. Funds leave the multisig's own config PDA, so there is nothing to point elsewhere (**INV-7**) |
 | Approve on a public (re-executed) path to dodge the proof | unsupported | No public approve path exists; tested absent (SC-C.8) |
 | Non-member submits an approval | rejected | Merkle path to `member_root` cannot be produced |
 | Removed member approves under the old root | fails — different address | Config change means a new `config_hash` (INV-5) |

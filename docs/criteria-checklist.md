@@ -21,7 +21,7 @@ Status: ✅ evidence exists · ◐ partial · ⛔ not met
 | **P-F5** | Proof generation runs client-side on a standard laptop | ✅ | Standalone membership proof **53.26 s**; composed approval **≈19 min 26 s**, peak **8.74 GB**, on an 8-core 16 GB laptop with no GPU. Both in `docs/cu-costs.md`. Caveat stated: needs ~9 GB *free* (`docs/limitations.md` §10a) |
 | **P-F6** | Reference integration: threshold-gated action on LEZ **testnet** with shielded members | ⛔ | Works on a **local** standalone sequencer. Nothing deployed to public testnet — no program id, no explorer links |
 | **P-F7** | ≥1 multisig on testnet: create + propose + approve-to-threshold + execute, reproducible with evidence | ⛔ | Locally: create ✅, propose ✅, approve ✅ (1 of 2). Not yet: second approval, `execute`, and anything on public testnet. All four instructions are now exercised through the risc0 executor, which is how INV-7 was found: `execute` paid whichever account the submitter named rather than the one the proposal approved ([ADR-001 INV-7](adr/ADR-001-architecture.md)) |
-| **P-F8** | Full documentation and a clean public repository | ◐ | Public repo, CI green, 102 tests, ADRs, security model, error codes, limitations. Missing: `SOLUTION_DRAFT.md`, `DEPLOYMENT.md`, `BUGS_FILED.md` |
+| **P-F8** | Full documentation and a clean public repository | ◐ | Public repo, CI green, 123 tests, ADRs, security model, error codes, limitations, `SOLUTION_DRAFT.md`, `BUGS_FILED.md`, and a documentation index in the README. Missing: `DEPLOYMENT.md`, which needs the testnet run |
 
 ## Usability
 

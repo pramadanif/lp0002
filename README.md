@@ -74,7 +74,7 @@ Each phase has a status document recording the exact commands run, their exit co
 | C | SPEL program: create / propose / approve / execute, IDL | ✅ [`docs/phase-C-status.md`](docs/phase-C-status.md) |
 | D | SDK, CLI, restart-resume, peer privacy | ✅ [`docs/phase-D-status.md`](docs/phase-D-status.md) |
 | E | `demo.sh` against a standalone sequencer, CI e2e | ◐ [`docs/phase-E-status.md`](docs/phase-E-status.md) |
-| F | Basecamp app, downloadable `.lgx` | ☐ |
+| F | Basecamp app, downloadable `.lgx` | ◐ [`docs/phase-F-status.md`](docs/phase-F-status.md) |
 | G | Testnet deployment, CU costs, public verification | ☐ |
 | H | Documentation, preflight green, narrated video | ☐ |
 
@@ -190,7 +190,8 @@ cargo run -p pmsig-cli --bin pmsig -- --help
 
 pmsig create   --members <nsk,nsk,nsk> --m 2
 pmsig propose  --proposal-id <hex> --recipient <hex> --amount 1000
-pmsig approve  --proposal-id <hex> --member <nsk>
+pmsig approve  --proposal-id <hex> --member-file <path>   # preferred
+pmsig approve  --proposal-id <hex> --member <nsk>         # warns: visible in `ps`
 pmsig execute  --proposal-id <hex>
 pmsig status   --proposal-id <hex>
 ```
@@ -218,6 +219,27 @@ module.
 > `.lgx` is **not built**: the toolchain is not installed here.
 
 
+## Documentation
+
+Everything a reviewer needs, in the order it is usually wanted.
+
+| Document | What it answers |
+|----------|-----------------|
+| [`docs/criteria-checklist.md`](docs/criteria-checklist.md) | Every prize criterion, its status, and the evidence — including what is **not** met |
+| [`docs/limitations.md`](docs/limitations.md) | What this does not do, what is unproven, and what was measured on one machine only |
+| [`docs/adr/ADR-001-architecture.md`](docs/adr/ADR-001-architecture.md) | The architecture, the account model, and the invariants INV-1 … INV-7 |
+| [`docs/adr/ADR-002-bind-verifier-to-config-hash.md`](docs/adr/ADR-002-bind-verifier-to-config-hash.md) | Why the membership verifier is bound into `config_hash` |
+| [`docs/security.md`](docs/security.md) | Threat model: what an attacker can try, and what stops it |
+| [`docs/error-codes.md`](docs/error-codes.md) | Every error code, on-chain and client-side, and the number a client actually sees |
+| [`docs/integration.md`](docs/integration.md) | Using this from another program: what proves what, and what the SDK does *not* do |
+| [`docs/cu-costs.md`](docs/cu-costs.md) | Cycles, proving time and memory, measured |
+| [`docs/lez-account-model.md`](docs/lez-account-model.md) | How LEZ private accounts work, as read from its source |
+| [`docs/tried-failed.md`](docs/tried-failed.md) | Approaches that did not work, and why — including bugs we shipped and caught |
+| [`docs/BUGS_FILED.md`](docs/BUGS_FILED.md) | Issues found in upstream LEZ/SPEL while building this |
+| [`docs/VERSIONS.md`](docs/VERSIONS.md) | Every pinned version, and how each pin was established by measurement |
+| [`docs/why-logos.md`](docs/why-logos.md) | Why this belongs on Logos rather than a general-purpose chain |
+| [`docs/PR_SUBMISSION_GUIDE.md`](docs/PR_SUBMISSION_GUIDE.md) | How the prize PR is opened, and what must be true first |
+
 ## Repository layout
 
 ```
@@ -227,9 +249,12 @@ crates/membership-core witness types and the membership check
 crates/sdk       client-side proving, and the member-facing API
 crates/store     local persistence for partial approval sets
 crates/cli       `pmsig` command-line client
-scripts/         preflight, dev-mode clobber check; e2e + verification land later
-docs/            phase status docs, ADRs, security model, error codes, version pins
-artifacts/       evidence: ImageIDs, probe output, binary hashes
+crates/guest-tools  wraps a guest ELF into a risc0 ProgramBinary and reports its ImageID
+programs/        the LEZ guests: `multisig-spel` (SPEL) and `membership-lez`
+app/             the generated Basecamp GUI (QML + C++ backend)
+scripts/         build, e2e against a real sequencer, deployment, and the CI gates
+docs/            ADRs, security model, error codes, limitations, phase status, version pins
+artifacts/       evidence: guest binaries, ImageIDs, IDL, on-chain run output
 ```
 
 ## Licence
