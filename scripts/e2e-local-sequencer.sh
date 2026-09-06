@@ -202,8 +202,23 @@ SEQ_BIN="$LEZ_DIR/target/release/sequencer_service"
 
 # ─── 3. Build and package our guests ─────────────────────────────────────────────────────────────
 log "building the guest programs"
-"$REPO/scripts/build-guests.sh" || die "guest build failed"
-[[ -s "$REPO/artifacts/membership.bin" ]] || die "artifacts/membership.bin missing after build"
+# Never overwrite the committed artifacts. A ProgramId on LEZ *is* the guest's ImageID, so a
+# local-toolchain rebuild into artifacts/ does not just churn a timestamp — it swaps the identity of
+# every program and every multisig address derived from it. Exactly one commit in this repo's
+# history carried reproducible binaries; demo runs overwrote them each time after that.
+#
+# When the committed binaries are reproducible and current, the demo runs the very binaries the
+# submission ships. Otherwise it builds its own copy, off to the side.
+ART_DIR="$RUN_DIR/artifacts"
+if ./scripts/check-guests-fresh.sh >/dev/null 2>&1 \
+   && ! grep -q 'NOT reproducible' "$REPO/artifacts/IMAGE_IDS.md" 2>/dev/null; then
+  ART_DIR="$REPO/artifacts"
+  info "using the committed reproducible artifacts — no rebuild, nothing overwritten"
+else
+  info "committed artifacts are stale or not reproducible — building into $ART_DIR instead"
+  PMSIG_ARTIFACTS_DIR="$ART_DIR" "$REPO/scripts/build-guests.sh" || die "guest build failed"
+fi
+[[ -s "$ART_DIR/membership.bin" ]] || die "$ART_DIR/membership.bin missing after build"
 
 # ─── 4. Start the sequencer ──────────────────────────────────────────────────────────────────────
 log "starting the standalone sequencer"
@@ -370,7 +385,7 @@ info "wallet balance: $(lez_balance) after $claims claim(s)"
 
 log "deploying the programs"
 for prog in membership multisig; do
-  out=$("$WALLET" deploy-program "$REPO/artifacts/$prog.bin" 2>&1) || die "deploying $prog failed"
+  out=$("$WALLET" deploy-program "$ART_DIR/$prog.bin" 2>&1) || die "deploying $prog failed"
   blk=$(echo "$out" | awk '/included in block/{print $NF}')
   info "$prog deployed, block $blk"
 done
@@ -389,7 +404,7 @@ eval "$(echo "$PARAMS" | grep '=')"
 info "derivation cross-checked against the wallet's accounts: ok"
 info "config_hash $CONFIG_HASH"
 
-spel_run() { "$SPEL" --idl "$REPO/artifacts/multisig-idl.json" -p "$REPO/artifacts/multisig.bin" "$@"; }
+spel_run() { "$SPEL" --idl "$REPO/artifacts/multisig-idl.json" -p "$ART_DIR/multisig.bin" "$@"; }
 
 # ─── 9. create → propose ─────────────────────────────────────────────────────────────────────────
 log "creating the 2-of-3 multisig"
@@ -476,8 +491,8 @@ require_free_ram
   log "approval $((i+1)) of 2 — shielded member, anonymous, RISC0_DEV_MODE=$RISC0_DEV_MODE"
   info "this proves a real proof and takes ~20 minutes; it is not hung"
   started=$(date +%s)
-  "$SPEL" --idl "$REPO/artifacts/multisig-idl.json" -p "$REPO/artifacts/multisig.bin" \
-    --bin-membership "$REPO/artifacts/membership.bin" -- \
+  "$SPEL" --idl "$REPO/artifacts/multisig-idl.json" -p "$ART_DIR/multisig.bin" \
+    --bin-membership "$ART_DIR/membership.bin" -- \
     approve --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
     --member-root "$MEMBER_ROOT" --claimed-nullifier "$nf" \
     --witness "$(cat "$wit_file")" --approver "Private/$acct" \
@@ -518,7 +533,7 @@ info "executed and confirmed"
 # ─── 12. Verify the on-chain state says what it should ───────────────────────────────────────────
 log "verifying the on-chain state"
 cargo run --quiet -p pmsig-sdk --example verify_onchain -- \
-  "$SEQ_URL" "$REPO/artifacts/IMAGE_IDS.md" "$CONFIG_HASH" "$PROPOSAL_SEED" \
+  "$SEQ_URL" "$ART_DIR/IMAGE_IDS.md" "$CONFIG_HASH" "$PROPOSAL_SEED" \
   "$((TREASURY_AMOUNT - TRANSFER_AMOUNT))" \
   || die "on-chain verification failed"
 
