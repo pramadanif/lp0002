@@ -106,6 +106,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("MEMBER_ROOT={}", hex::encode(tree.root()));
     println!("CONFIG_HASH={}", hex::encode(config_hash));
     println!("MULTISIG_ID={}", hex::encode(MULTISIG_ID));
+    // The address the multisig's own funds live at. Under INV-7 `execute` pays out of this
+    // account, so a deployment has to fund it — which is what the scripts were missing.
+    println!(
+        "CONFIG_PDA={}",
+        pmsig_sdk::address::config_address(&read_image_id("multisig")?, &config_hash)
+    );
     println!("PROPOSAL_ID={}", hex::encode(PROPOSAL_ID));
     println!(
         "PROPOSAL_SEED={}",
@@ -189,11 +195,16 @@ fn decode_vpk(bytes: &[u8]) -> Result<ViewingPublicKey, Box<dyn std::error::Erro
 }
 
 fn read_membership_image_id() -> Result<[u32; 8], Box<dyn std::error::Error>> {
+    read_image_id("membership")
+}
+
+/// Reads one guest's ProgramId out of `artifacts/IMAGE_IDS.md`.
+fn read_image_id(name: &str) -> Result<[u32; 8], Box<dyn std::error::Error>> {
     let doc = std::fs::read_to_string("artifacts/IMAGE_IDS.md")?;
     let section = doc
-        .split("## `membership`")
+        .split(&format!("## `{name}`"))
         .nth(1)
-        .ok_or("no membership section")?;
+        .ok_or("no such section in IMAGE_IDS.md")?;
     let line = section
         .lines()
         .find(|l| l.contains("ProgramId"))

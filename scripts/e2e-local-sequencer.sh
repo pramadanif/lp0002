@@ -251,6 +251,28 @@ spel_run -- create-multisig \
 grep -q 'confirmed' "$RUN_DIR/create.log" || die "create_multisig was not confirmed"
 info "multisig created and confirmed"
 
+# The demo moves a modest amount: a faucet claim is 150, and the proposal must be payable out of
+# the multisig's own treasury (INV-7). Both are defined here, before the funding step uses them.
+TRANSFER_AMOUNT=100
+TREASURY_AMOUNT=100
+
+# ─── Fund the multisig's own treasury ────────────────────────────────────────────────────────────
+#
+# INV-7 made `execute` pay out of the multisig's own config PDA rather than a caller-supplied
+# treasury account. Nothing funds that PDA, so `execute` failed with "Transaction NOT confirmed" —
+# on the public testnet and in CI, both times after two real ~20-minute proofs had already
+# succeeded. The old shape could not have worked either: the caller-supplied treasury was $CREATOR,
+# and the proposal asked for more than it held.
+#
+# This is the step that was missing. It runs before the proposal so the funds are in place by the
+# time the threshold is reached.
+log "funding the multisig's treasury ($CONFIG_PDA)"
+[[ -n "${CONFIG_PDA:-}" ]] || die "CONFIG_PDA was not derived — is examples/wallet_member.rs emitting it?"
+fund_out=$("$WALLET" auth-transfer send \
+  --from "$CREATOR" --to "Public/$CONFIG_PDA" --amount "$TREASURY_AMOUNT" 2>&1) \
+  || { printf '%s\n' "$fund_out" >&2; die "could not fund the multisig treasury"; }
+info "funded with $TREASURY_AMOUNT — $(printf '%s\n' "$fund_out" | awk '/included in block/{print; exit}')"
+
 log "submitting a treasury-transfer proposal"
 # One variable for both steps. `execute` refuses a recipient the proposal did not name (INV-7), so
 # these must agree; they used to be written out separately and disagreed.
@@ -258,7 +280,7 @@ RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 spel_run -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
   --recipient "$RECIPIENT" \
-  --amount 1000 --proposer "$CREATOR" \
+  --amount "$TRANSFER_AMOUNT" --proposer "$CREATOR" \
   > "$RUN_DIR/propose.log" 2>&1 || { tail -20 "$RUN_DIR/propose.log" >&2; die "create_proposal failed"; }
 grep -q 'confirmed' "$RUN_DIR/propose.log" || die "create_proposal was not confirmed"
 info "proposal created and confirmed"

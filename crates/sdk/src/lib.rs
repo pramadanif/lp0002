@@ -5,6 +5,7 @@
 
 use thiserror::Error;
 
+pub mod address;
 pub mod member;
 pub mod prove;
 

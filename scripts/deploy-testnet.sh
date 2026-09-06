@@ -182,13 +182,35 @@ TX_CREATE=$(run_ix create -- create-multisig \
   --multisig-id "$MULTISIG_ID" --membership-program-id "$VERIFIER" --creator "$CREATOR")
 info "tx $TX_CREATE"
 
+# The demo moves a modest amount: a faucet claim is 150, and the proposal must be payable out of
+# the multisig's own treasury (INV-7). Both are defined here, before the funding step uses them.
+TRANSFER_AMOUNT=100
+TREASURY_AMOUNT=100
+
+# ─── Fund the multisig's own treasury ────────────────────────────────────────────────────────────
+#
+# INV-7 made `execute` pay out of the multisig's own config PDA rather than a caller-supplied
+# treasury account. Nothing funds that PDA, so `execute` failed with "Transaction NOT confirmed" —
+# on the public testnet and in CI, both times after two real ~20-minute proofs had already
+# succeeded. The old shape could not have worked either: the caller-supplied treasury was $CREATOR,
+# and the proposal asked for more than it held.
+#
+# This is the step that was missing. It runs before the proposal so the funds are in place by the
+# time the threshold is reached.
+log "funding the multisig's treasury ($CONFIG_PDA)"
+[[ -n "${CONFIG_PDA:-}" ]] || die "CONFIG_PDA was not derived — is examples/wallet_member.rs emitting it?"
+fund_out=$("$WALLET" auth-transfer send \
+  --from "$CREATOR" --to "Public/$CONFIG_PDA" --amount "$TREASURY_AMOUNT" 2>&1) \
+  || { printf '%s\n' "$fund_out" >&2; die "could not fund the multisig treasury"; }
+info "funded with $TREASURY_AMOUNT — $(printf '%s\n' "$fund_out" | awk '/included in block/{print; exit}')"
+
 log "create_proposal (treasury transfer)"
 # One variable for both steps: `execute` refuses a recipient the proposal did not name (INV-7).
 RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 TX_PROPOSE=$(run_ix propose -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
   --recipient "$RECIPIENT" \
-  --amount 1000 --proposer "$CREATOR")
+  --amount "$TRANSFER_AMOUNT" --proposer "$CREATOR")
 info "tx $TX_PROPOSE"
 
 # H13/W15: the published evidence uses the FULL threshold, never a lowered tier.
