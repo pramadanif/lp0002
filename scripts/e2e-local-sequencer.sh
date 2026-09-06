@@ -397,7 +397,7 @@ log "submitting a treasury-transfer proposal"
 RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 spel_run -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
-  --recipient "$RECIPIENT" --submitter "$CREATOR" \
+  --recipient "$RECIPIENT" \
   --amount "$TRANSFER_AMOUNT" --proposer "$CREATOR" \
   > "$RUN_DIR/propose.log" 2>&1 || { tail -20 "$RUN_DIR/propose.log" >&2; die "create_proposal failed"; }
 grep -q 'confirmed' "$RUN_DIR/propose.log" || die "create_proposal was not confirmed"

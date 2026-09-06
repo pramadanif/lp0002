@@ -209,7 +209,7 @@ log "create_proposal (treasury transfer)"
 RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 TX_PROPOSE=$(run_ix propose -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
-  --recipient "$RECIPIENT" --submitter "$CREATOR" \
+  --recipient "$RECIPIENT" \
   --amount "$TRANSFER_AMOUNT" --proposer "$CREATOR")
 info "tx $TX_PROPOSE"
 

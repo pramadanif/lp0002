@@ -156,6 +156,14 @@ jobs:
       - name: check-guests-fresh.sh
         run: ./scripts/check-guests-fresh.sh
 
+  idl-flags:
+    name: script flags match the IDL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-idl-flags.sh
+        run: ./scripts/check-idl-flags.sh
+
   links:
     name: every relative Markdown link resolves
     runs-on: ubuntu-latest
