@@ -27,13 +27,16 @@ require cargo "Install Rust: https://rustup.rs"
 require curl  "Install curl."
 
 RPC="${1:-}"; CONFIG_HASH="${2:-}"; PROPOSAL_SEED="${3:-}"
+# Optional 4th arg: what the treasury should hold afterwards. Public data cannot say how much a
+# treasury was funded with, so only a caller that funded it can assert the exact remainder.
+EXPECT_TREASURY="${4:-}"
 
 # With no arguments, take the deployment record as the source of truth. That keeps the published
 # evidence and this check from drifting apart: if DEPLOYMENT.md is wrong, this fails.
 if [[ -z "$RPC" ]]; then
   [[ -f docs/DEPLOYMENT.md ]] || {
     echo "FATAL: docs/DEPLOYMENT.md not found, and no arguments given." >&2
-    echo "       usage: $0 <rpc-url> <config_hash> <proposal_seed>" >&2
+    echo "       usage: $0 <rpc-url> <config_hash> <proposal_seed> [expected_treasury]" >&2
     exit 1
   }
   RPC=$(awk -F'`' '/^\| *RPC/ {print $2; exit}' docs/DEPLOYMENT.md)
@@ -63,7 +66,7 @@ echo "  node reachable: yes"
 echo
 
 cargo run --quiet -p pmsig-sdk --example verify_onchain -- \
-  "$RPC" artifacts/IMAGE_IDS.md "$CONFIG_HASH" "$PROPOSAL_SEED"
+  "$RPC" artifacts/IMAGE_IDS.md "$CONFIG_HASH" "$PROPOSAL_SEED" ${EXPECT_TREASURY:+"$EXPECT_TREASURY"}
 
 # Transaction variants: an approval MUST be a privacy-preserving transaction. If approvals ever
 # showed up as plain public transactions, the whole privacy claim would be hollow — and that is

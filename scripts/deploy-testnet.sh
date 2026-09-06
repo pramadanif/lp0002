@@ -190,7 +190,9 @@ info "tx $TX_CREATE"
 
 # The demo moves a modest amount: a faucet claim is 150, and the proposal must be payable out of
 # the multisig's own treasury (INV-7). Both are defined here, before the funding step uses them.
-TRANSFER_AMOUNT=100
+# Deliberately different: with both at 100 the treasury ends at 0, and "funded minus paid"
+# cannot be told apart from "emptied".
+TRANSFER_AMOUNT=60
 TREASURY_AMOUNT=100
 
 # ─── Fund the multisig's own treasury ────────────────────────────────────────────────────────────
@@ -347,7 +349,8 @@ log "writing docs/DEPLOYMENT.md"
 } > docs/DEPLOYMENT.md
 
 log "verifying from public chain data"
-./scripts/verify-onchain.sh "$RPC" "$CONFIG_HASH" "$PROPOSAL_SEED" || die "on-chain verification failed"
+./scripts/verify-onchain.sh "$RPC" "$CONFIG_HASH" "$PROPOSAL_SEED" \
+  "$((TREASURY_AMOUNT - TRANSFER_AMOUNT))" || die "on-chain verification failed"
 ./scripts/check-explorer-links.sh || die "an evidence link does not resolve"
 
 log "DONE — docs/DEPLOYMENT.md written and verified"
