@@ -641,7 +641,25 @@ fn execute_accounts(
             public_pda(&pid, &proposal_seed),
             false,
         ),
-        funded(recipient_id, 0),
+        // The payee is an account that already exists and is owned by some program — on chain,
+        // one registered with auth-transfer. Two LEZ rules force this, and between them they leave
+        // no room for paying a fresh address:
+        //
+        //   * a never-used account cannot be credited at all (`DefaultAccountModifiedWithoutClaim`,
+        //     enforced by the sequencer's admission check, **not** by `validate_execution` — which
+        //     is why the executor tests passed while the chain rejected the transaction);
+        //   * an account with a *default owner* that is no longer in default state is refused by
+        //     `validate_execution` rule 7.
+        //
+        // So the demo pays the creator's account rather than an invented address.
+        {
+            let mut a = Account {
+                balance: 1,
+                ..Account::default()
+            };
+            a.program_owner = ProgramId::from([0x11_u32; 8]);
+            AccountWithMetadata::new(a, false, recipient_id)
+        },
         // The submitter. Signed, but not an authority: the program never reads it, and every
         // account execute touches is pinned by the config, the seed or the approved action.
         account(
@@ -676,8 +694,8 @@ fn execute_pays_the_proposals_recipient() {
     // `execute` writes back `[config, proposal, recipient]`.
     assert_eq!(
         out.post_states[2].account().balance,
-        1000,
-        "the named recipient must receive the approved amount"
+        1001,
+        "the named recipient must receive the approved amount on top of what it held"
     );
     assert_eq!(
         out.post_states[0].account().balance,

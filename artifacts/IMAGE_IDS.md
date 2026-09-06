@@ -11,8 +11,8 @@ changes every multisig address.
 
 | | |
 |-|-|
-| Built | 2026-09-06T09:47:35Z |
-| Commit | `db57130` |
+| Built | 2026-09-06T09:57:29Z |
+| Commit | `a7cfd45` |
 | risc0 | risc0-r0vm 3.0.6 |
 | LEZ | v0.2.4 (see docs/VERSIONS.md) |
 

@@ -206,7 +206,26 @@ info "funded with $TREASURY_AMOUNT — $(printf '%s\n' "$fund_out" | awk '/inclu
 
 log "create_proposal (treasury transfer)"
 # One variable for both steps: `execute` refuses a recipient the proposal did not name (INV-7).
-RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
+# LEZ refuses to let a program modify an account that has never been used —
+# DefaultAccountModifiedWithoutClaim — unless the program claims ownership of it. Claiming is the
+# wrong answer here: a multisig must not take ownership of the account it is paying. So the demo
+# pays an account that already exists.
+#
+# It used to pay 0xc3c3…c3, an address nobody controls and that had therefore never been used. That
+# is why `execute` was rejected — on the public testnet, in CI, and locally — even with a funded
+# treasury, a proposal at full threshold and a signed submitter. The chain would not let the program
+# credit an account that did not yet exist.
+RECIPIENT=$(python3 -c "
+import sys
+A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+s = sys.argv[1].split('/')[-1]
+n = 0
+for ch in s:
+    n = n * 58 + A.index(ch)
+print(f'{n:064x}')
+" "$CREATOR")
+[[ ${#RECIPIENT} -eq 64 ]] || die "could not derive a 32-byte recipient id from $CREATOR (got '$RECIPIENT')"
+info "recipient: $CREATOR ($RECIPIENT)"
 TX_PROPOSE=$(run_ix propose -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
   --recipient "$RECIPIENT" \
