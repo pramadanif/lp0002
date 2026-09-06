@@ -11,8 +11,8 @@ changes every multisig address.
 
 | | |
 |-|-|
-| Built | 2026-09-06T11:48:48Z |
-| Commit | `f90a1ef` |
+| Built | 2026-09-06T18:11:11Z |
+| Commit | `c670ae0` |
 | risc0 | risc0-r0vm 3.0.6 |
 | LEZ | v0.2.4 (see docs/VERSIONS.md) |
 
@@ -21,24 +21,24 @@ changes every multisig address.
 | Field | Value |
 |-------|-------|
 | Crate | `programs/membership-lez` |
-| Build | local toolchain — NOT reproducible, do not deploy or quote in a submission |
-| ImageID | `f5cc9f3778fe5ccedd48726f20e0b4cfd7d2384f0bb7e130dbe5f4bf42ea87c1` |
-| ProgramId (u32×8) | `[933219573, 3462200952, 1869760733, 3484737568, 1329124055, 820098827, 3220497883, 3246910018]` |
+| Build | reproducible (cargo risczero build, container r0.1.91.1) |
+| ImageID | `960db4f24de1f1b0ebdc064a9be1246bde0e6a06f8be7f349fa562cc4207eade` |
+| ProgramId (u32×8) | `[4071886230, 2968641869, 1241963755, 1797579163, 107613918, 880787192, 3429016991, 3739879234]` |
 | Binary | `artifacts/membership.bin` |
-| Binary size | 373888 bytes |
-| SHA-256 | `69d3f49d631fc625def27a48e8dab57f544b754125e215159c18c2044ad28100` |
+| Binary size | 393868 bytes |
+| SHA-256 | `431a6a858cdb9db29959549437712e3974434c1ad6e8152beb449da5527ce979` |
 
 ## `multisig`
 
 | Field | Value |
 |-------|-------|
 | Crate | `programs/multisig-spel` |
-| Build | local toolchain — NOT reproducible, do not deploy or quote in a submission |
-| ImageID | `cedc68a9939eae68290a0c0d1d2d39fb65342ba0c65a3327ad4de05362fec191` |
-| ProgramId (u32×8) | `[2842221774, 1756274323, 218892841, 4214828317, 2687186021, 657676998, 1407208877, 2445409890]` |
+| Build | reproducible (cargo risczero build, container r0.1.91.1) |
+| ImageID | `79cf1dbaffe6295ce97af319e139220380d3da8ed4a877a12fd35cedc4a60468` |
+| ProgramId (u32×8) | `[3122515833, 1546249983, 435387113, 52574689, 2396705664, 2708973780, 3982283567, 1745135300]` |
 | Binary | `artifacts/multisig.bin` |
-| Binary size | 485564 bytes |
-| SHA-256 | `fcd9d79dadd3491526625a5cbeb7737fa94a5ad478db2c3cb3ae639800b405b7` |
+| Binary size | 515352 bytes |
+| SHA-256 | `6896738a058561cf74889a11fd5aae0c28376f4624b29620dacdb4a264de31e4` |
 
 ## Reproducing
 
