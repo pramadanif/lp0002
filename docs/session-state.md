@@ -1,4 +1,10 @@
-# Where this stands — 2026-09-07
+# Where this stands — 2026-09-07 (end of day)
+
+> **Do not run `deploy-testnet.sh` without asking first.** It publishes to a public network and
+> costs ~50 minutes. It was started once on 2026-09-07 without asking and stopped ~25 seconds in;
+> `membership` had already been published (tx `fe3a65ee…`, block 38661). No funds moved — the payer
+> balance is still 200 — and no repo file changed. Publishing the same binary again yields the same
+> ProgramId, so that step is harmless to repeat.
 
 A reminder to pick up from, written at the end of a long debugging session. Every number here was
 read from a command, not recalled.
@@ -85,6 +91,21 @@ id moved to `79cf1dba…`, correctly, since `execute` was rewritten.
 Because the committed artifacts are now reproducible and fresh, `demo.sh` skips the guest build
 entirely and runs the binaries the submission ships. That shortens a recording and removes the last
 way a demo run could quietly replace them.
+
+## Ready to run tomorrow, when you say so
+
+Every precondition for the testnet run was measured on 2026-09-07 and passed: RPC 8/8 at HTTP 200,
+wallet at `.e2e/wallet-testnet` with 1 public + 2 shielded accounts, payer balance 200, free RAM
+8.0 GB, artifacts reproducible. The DNS fault that blocked it earlier (the router at 172.16.100.1
+stopped resolving; 8.8.8.8 was fine) had cleared.
+
+```
+LEE_WALLET_HOME_DIR=.e2e/wallet-testnet ./scripts/deploy-testnet.sh
+```
+
+`deploy-testnet.sh` now funds 100 and transfers 60, and passes the expected remainder through
+`verify-onchain.sh`, so the testnet run asserts the same INV-7 arithmetic the local one does. It
+writes `docs/DEPLOYMENT.md` and verifies it, which closes **PF-09 and PF-10 together**.
 
 ## Still open, in priority order
 
