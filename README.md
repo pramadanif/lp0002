@@ -255,6 +255,7 @@ Everything a reviewer needs, in the order it is usually wanted.
 | [`docs/why-logos.md`](docs/why-logos.md) | Why this belongs on Logos rather than a general-purpose chain |
 | [`docs/PR_SUBMISSION_GUIDE.md`](docs/PR_SUBMISSION_GUIDE.md) | How the prize PR is opened, and what must be true first |
 | [`docs/agent-gap-brief.md`](docs/agent-gap-brief.md) | What is still missing before submission, checked by command |
+| [`docs/session-state.md`](docs/session-state.md) | Where the work stands, what is fixed but unproven, and what to do next |
 | [`docs/plan/`](docs/plan/README.md) | Verbatim copies of the prize text and the build plan this follows |
 
 ## Repository layout
