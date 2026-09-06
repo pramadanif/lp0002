@@ -119,6 +119,26 @@ cleanup() {
       info "stopping the sequencer (pid $SEQ_PID)"
       kill "$SEQ_PID" 2>/dev/null || true
       wait "$SEQ_PID" 2>/dev/null || true
+      # Saying "stopping" is not the same as having stopped. An earlier version killed a subshell
+      # and left the sequencer itself running on the port, run after run, and reported success.
+      port=${SEQ_URL##*:}
+      if command -v lsof >/dev/null 2>&1; then
+        for _ in 1 2 3 4 5; do
+          left=$(lsof -ti :"$port" 2>/dev/null || true)
+          [[ -z "$left" ]] && break
+          sleep 1
+        done
+        if [[ -n "${left:-}" ]]; then
+          printf '\033[1;33m    sequencer survived on port %s (pid %s) — killing it\033[0m\n' \
+            "$port" "$(echo "$left" | tr '\n' ' ')" >&2
+          # shellcheck disable=SC2086
+          kill $left 2>/dev/null || true
+          sleep 2
+          left=$(lsof -ti :"$port" 2>/dev/null || true)
+          [[ -n "$left" ]] && printf '\033[1;31m    port %s STILL held by %s\033[0m\n' \
+            "$port" "$(echo "$left" | tr '\n' ' ')" >&2
+        fi
+      fi
     fi
   fi
   if (( code != 0 )); then
@@ -214,7 +234,7 @@ if command -v lsof >/dev/null 2>&1; then
   fi
 fi
 
-( cd "$SEQ_HOME" && RUST_LOG=info "$SEQ_BIN" "$SEQ_CONFIG" > "$SEQ_LOG" 2>&1 ) &
+( cd "$SEQ_HOME" && exec env RUST_LOG=info "$SEQ_BIN" "$SEQ_CONFIG" > "$SEQ_LOG" 2>&1 ) &
 SEQ_PID=$!
 info "sequencer pid $SEQ_PID, logs -> $SEQ_LOG"
 
@@ -297,7 +317,7 @@ info "creator: $CREATOR"
 # ─── 7. Deploy both programs ─────────────────────────────────────────────────────────────────────
 # The demo moves a modest amount: a faucet claim is 150, and the proposal must be payable out of
 # the multisig's own treasury (INV-7). Defined here, before the faucet loop reads TREASURY_AMOUNT.
-TRANSFER_AMOUNT=100
+TRANSFER_AMOUNT=60
 TREASURY_AMOUNT=100
 
 # ─── Fund the creator from the local Piñata faucet ───────────────────────────────────────────────
@@ -499,6 +519,7 @@ info "executed and confirmed"
 log "verifying the on-chain state"
 cargo run --quiet -p pmsig-sdk --example verify_onchain -- \
   "$SEQ_URL" "$REPO/artifacts/IMAGE_IDS.md" "$CONFIG_HASH" "$PROPOSAL_SEED" \
+  "$((TREASURY_AMOUNT - TRANSFER_AMOUNT))" \
   || die "on-chain verification failed"
 
 E2E_COMPLETED=1

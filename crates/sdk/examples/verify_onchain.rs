@@ -20,6 +20,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let image_ids = args.next().ok_or("missing IMAGE_IDS.md path")?;
     let config_hash: Digest32 = hex32(&args.next().ok_or("missing config_hash")?)?;
     let proposal_seed: Digest32 = hex32(&args.next().ok_or("missing proposal_seed")?)?;
+    // Optional: what the treasury should hold afterwards. Public data cannot say how much the
+    // treasury was funded with, so only a caller who funded it can assert the exact remainder.
+    let expect_treasury: Option<u128> = match args.next() {
+        Some(v) => Some(v.parse()?),
+        None => None,
+    };
 
     let doc = std::fs::read_to_string(&image_ids)?;
     let multisig_pid = program_id(&doc, "multisig")?;
@@ -38,11 +44,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ---- config account ----
     let cfg = get_account(&rpc, &config_pda)?;
-    let owner = cfg.0;
+    let owner = cfg.owner;
     if owner != multisig_pid {
         return fail("config account is not owned by the multisig program".into());
     }
-    let c = decode_config(&cfg.1)?;
+    let c = decode_config(&cfg.data)?;
     if c.recompute() != config_hash {
         return fail("the config account does not rehash to its own address (INV-3)".into());
     }
@@ -57,7 +63,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ---- proposal account ----
     let prop = get_account(&rpc, &proposal_pda)?;
-    let p = decode_proposal(&prop.1)?;
+    let p = decode_proposal(&prop.data)?;
     if p.config_hash != config_hash {
         return fail("the proposal belongs to a different multisig".into());
     }
@@ -82,11 +88,53 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("  FULL M       : evidence uses the full threshold, not a lowered tier (H13/W15)");
 
+    // ---- INV-7: the transfer that executed is the transfer that was approved ----
+    //
+    // The recipient is read back out of the *proposal*, never from an argument: an address supplied
+    // by the caller would only prove that the caller and the chain agree, which is not the claim.
+    // Without this block a proposal marked `executed` was the whole proof that money moved, and a
+    // transfer of nothing, or to somebody else, would have passed every check above.
+    if p.amount == 0 {
+        return fail("the proposal moves 0 — a zero transfer would make this check vacuous".into());
+    }
+    let recipient_addr = base58(&p.recipient);
+    let paid = get_account(&rpc, &recipient_addr)
+        .map_err(|e| format!("the approved recipient {recipient_addr} is not on chain: {e}"))?
+        .balance;
+    if paid < p.amount {
+        return fail(format!(
+            "the approved recipient {recipient_addr} holds {paid}, less than the {} the proposal \
+             approved — the executed transfer does not match the approved one (INV-7)",
+            p.amount
+        ));
+    }
+    println!(
+        "  payment      : {recipient_addr} holds {paid}, covering the {} approved (INV-7)",
+        p.amount
+    );
+
+    let treasury = cfg.balance;
+    if let Some(want) = expect_treasury {
+        if treasury != want {
+            return fail(format!(
+                "the treasury holds {treasury}, not the {want} expected after paying {} — the \
+                 amount debited does not match the amount approved",
+                p.amount
+            ));
+        }
+        println!(
+            "  treasury     : {treasury} left, exactly funding minus the {} paid",
+            p.amount
+        );
+    } else {
+        println!("  treasury     : {treasury} (no expected remainder supplied)");
+    }
+
     // ---- the privacy property, checked against the bytes ----
     //
     // The strongest thing checkable from public data: the account holds a member ROOT and a set of
     // nullifiers, and nothing that is an account id or an npk.
-    if bytes_contain(&prop.1, &c.member_root) {
+    if bytes_contain(&prop.data, &c.member_root) {
         return fail("the member root leaked into the proposal account".into());
     }
     println!("  privacy      : proposal holds a count + nullifiers, no member identity (P-F2)");
@@ -119,6 +167,8 @@ impl Config {
 
 struct Proposal {
     config_hash: Digest32,
+    recipient: Digest32,
+    amount: u128,
     nullifiers: Vec<Digest32>,
     executed: bool,
 }
@@ -151,8 +201,9 @@ fn decode_proposal(d: &[u8]) -> Result<Proposal, Box<dyn std::error::Error>> {
     let config_hash = take32(d, &mut o)?;
     let _proposal_id = take32(d, &mut o)?;
     o += 1; // action discriminant
-    let _recipient = take32(d, &mut o)?;
-    o += 16; // amount u128
+    let recipient = take32(d, &mut o)?;
+    let amount = u128::from_le_bytes(d.get(o..o + 16).ok_or("short proposal")?.try_into()?);
+    o += 16;
     let count = u32::from_le_bytes(d.get(o..o + 4).ok_or("short proposal")?.try_into()?) as usize;
     o += 4;
     let mut nullifiers = Vec::with_capacity(count);
@@ -162,6 +213,8 @@ fn decode_proposal(d: &[u8]) -> Result<Proposal, Box<dyn std::error::Error>> {
     let executed = *d.get(o).ok_or("short proposal")? != 0;
     Ok(Proposal {
         config_hash,
+        recipient,
+        amount,
         nullifiers,
         executed,
     })
@@ -231,8 +284,15 @@ fn program_id(doc: &str, name: &str) -> Result<[u32; 8], Box<dyn std::error::Err
     Ok(<[u32; 8]>::try_from(w.as_slice())?)
 }
 
-/// Returns `(program_owner, data)` for an account, over plain JSON-RPC.
-fn get_account(rpc: &str, id: &str) -> Result<([u32; 8], Vec<u8>), Box<dyn std::error::Error>> {
+/// One account as the chain reports it.
+struct Account {
+    owner: [u32; 8],
+    data: Vec<u8>,
+    balance: u128,
+}
+
+/// Reads an account over plain JSON-RPC.
+fn get_account(rpc: &str, id: &str) -> Result<Account, Box<dyn std::error::Error>> {
     let body = format!(r#"{{"jsonrpc":"2.0","id":1,"method":"getAccount","params":["{id}"]}}"#);
     let out = std::process::Command::new("curl")
         .args([
@@ -265,5 +325,19 @@ fn get_account(rpc: &str, id: &str) -> Result<([u32; 8], Vec<u8>), Box<dyn std::
         .iter()
         .map(|b| u8::try_from(b.as_u64().unwrap_or(0)).unwrap_or(0))
         .collect();
-    Ok((owner, data))
+    // A u128 balance does not always survive JSON as a number, so accept either form rather than
+    // silently reading a wrong figure — this value decides whether the money moved.
+    let bal = r.get("balance").ok_or("no balance")?;
+    let balance: u128 = match bal.as_u64() {
+        Some(n) => u128::from(n),
+        None => bal
+            .as_str()
+            .ok_or("balance is neither a u64 nor a string")?
+            .parse()?,
+    };
+    Ok(Account {
+        owner,
+        data,
+        balance,
+    })
 }
