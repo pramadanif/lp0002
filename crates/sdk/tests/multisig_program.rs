@@ -577,15 +577,6 @@ fn program_output_passes_lez_own_execution_validation() {
 #[allow(dead_code)]
 fn _type_anchor(_: Receipt) {}
 
-/// Builds an account carrying a balance, for the treasury/recipient slots of `execute`.
-fn funded(id: AccountId, balance: u128) -> AccountWithMetadata {
-    let a = Account {
-        balance,
-        ..Account::default()
-    };
-    AccountWithMetadata::new(a, false, id)
-}
-
 /// Shared fixture for the `execute` tests: a 1-of-3 whose single proposal has met its threshold and
 /// is payable to `RECIPIENT`.
 fn executable_proposal() -> (ProgramId, Digest32, Digest32, MultisigConfig, Proposal) {
@@ -962,7 +953,6 @@ fn every_instruction_satisfies_lez_admission_rules() {
     let pid = program_id();
     let tree = member_tree();
     let config_hash = pmsig_core::config_hash(&tree.root(), 1, 3, &MULTISIG_ID, &pid);
-    let proposal_seed = pmsig_core::proposal_seed(&config_hash, &PROPOSAL_ID);
     let (epid, ech, eps, cfg, prop) = executable_proposal();
 
     let outputs = [
