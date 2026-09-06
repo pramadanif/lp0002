@@ -391,7 +391,6 @@ fund_out=$("$WALLET" auth-transfer send \
   || { printf '%s\n' "$fund_out" >&2; die "could not fund the multisig treasury"; }
 info "funded with $TREASURY_AMOUNT — $(printf '%s\n' "$fund_out" | awk '/included in block/{print; exit}')"
 
-log "submitting a treasury-transfer proposal"
 # One variable for both steps. `execute` refuses a recipient the proposal did not name (INV-7), so
 # these must agree; they used to be written out separately and disagreed.
 # The payee is a second public account, created and initialised for the purpose. Three LEZ rules
@@ -424,6 +423,8 @@ print(f'{n:064x}')
 " "$PAYEE")
 [[ ${#RECIPIENT} -eq 64 ]] || die "could not derive a 32-byte recipient id from $PAYEE (got '$RECIPIENT')"
 info "payee: $PAYEE ($RECIPIENT)"
+
+log "submitting a treasury-transfer proposal"
 spel_run -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
   --recipient "$RECIPIENT" \
