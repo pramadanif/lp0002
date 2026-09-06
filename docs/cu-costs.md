@@ -60,7 +60,7 @@ receipts and therefore recursion. Measured on the same machine:
 |-------------|-------|
 | Proving time | **≈19 min 26 s** (21:25:01 → 21:44:27) |
 | Peak r0vm resident memory | **8.74 GB** |
-| Free RAM required (practical) | **≈9 GB** |
+| Free RAM required (practical) | **≈7 GB** (a run starting from 7.4 GB free completed both approvals) |
 | Swap movement | none — stable throughout |
 | Stages observed | 7 (each releases memory on completion) |
 | Host | 8-core laptop, 16 GB, **no GPU prover** |
@@ -71,8 +71,6 @@ That is **≈22× the standalone proof**, which is the price of recursion over t
 **A caveat that matters more than the number:** an earlier attempt at the same proof did not finish
 at all, because ~9 GB of the machine's 16 GB was already held by a browser and two editors. It was
 contention, not capacity. See `docs/limitations.md` §10a.
-
-### Known measurement anomaly
 
 ### Known measurement anomaly
 
