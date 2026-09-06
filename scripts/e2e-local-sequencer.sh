@@ -35,6 +35,24 @@ log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 info() { printf '    %s\n' "$*"; }
 die()  { printf '\n\033[1;31mFATAL: %s\033[0m\n' "$*" >&2; exit 1; }
 
+# Runs a command with a wall-clock limit. macOS has no `timeout(1)`, and every wallet call on this
+# path was unbounded — `wallet check-health` hung for four hours with no output, no CPU and no open
+# socket, and the demo waited on it the whole time. A demo that can hang forever is worse than one
+# that fails: the failure at least tells you something.
+#
+# Proving is deliberately NOT wrapped: it legitimately takes ~20 minutes and has its own heartbeat.
+with_timeout() { # seconds, then command...
+  local secs="$1"; shift
+  "$@" &
+  local cmd_pid=$!
+  ( sleep "$secs"; kill -0 "$cmd_pid" 2>/dev/null && kill "$cmd_pid" 2>/dev/null ) &
+  local killer=$!
+  local rc=0
+  wait "$cmd_pid" 2>/dev/null || rc=$?
+  kill "$killer" 2>/dev/null || true
+  return "$rc"
+}
+
 # Free memory in GB, or empty when it cannot be determined.
 #
 # Not decoration. A composed approval peaks near 9 GB (docs/cu-costs.md); below that the prover does
@@ -234,7 +252,8 @@ log "preparing a wallet with two shielded accounts"
 export LEE_WALLET_HOME_DIR="$RUN_DIR/wallet"
 mkdir -p "$LEE_WALLET_HOME_DIR"
 cp -n "$LEZ_DIR/lez/wallet/configs/debug/wallet_config.json" "$LEE_WALLET_HOME_DIR/" 2>/dev/null || true
-"$WALLET" check-health >/dev/null 2>&1 || die "the wallet could not reach the sequencer"
+with_timeout 60 "$WALLET" check-health >/dev/null 2>&1 \
+  || die "the wallet could not reach the sequencer within 60s (it hangs rather than erroring)"
 
 # A 2-of-3 needs two shielded members. Top up to two; `account new private` is idempotent enough
 # because we only ever count the first two.
@@ -245,7 +264,8 @@ except Exception: print(0); sys.exit()
 print(sum(1 for a in d['key_chain']['accounts'] if 'Private' in a))")
 while (( privates < 2 )); do
   info "creating a shielded account ($((privates+1)) of 2)"
-  "$WALLET" account new private >/dev/null 2>&1 || die "could not create a shielded account"
+  with_timeout 120 "$WALLET" account new private >/dev/null 2>&1 \
+    || die "could not create a shielded account within 120s"
   privates=$((privates+1))
 done
 info "wallet has $privates shielded accounts"
