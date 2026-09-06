@@ -248,6 +248,7 @@ Everything a reviewer needs, in the order it is usually wanted.
 | [`docs/integration.md`](docs/integration.md) | Using this from another program: what proves what, and what the SDK does *not* do |
 | [`docs/cu-costs.md`](docs/cu-costs.md) | Cycles, proving time and memory, measured |
 | [`docs/lez-account-model.md`](docs/lez-account-model.md) | How LEZ private accounts work, as read from its source |
+| [`docs/lez-admission-rules.md`](docs/lez-admission-rules.md) | The eighteen checks a transaction passes before it reaches a block, and how `execute` satisfies each |
 | [`docs/tried-failed.md`](docs/tried-failed.md) | Approaches that did not work, and why — including bugs we shipped and caught |
 | [`docs/BUGS_FILED.md`](docs/BUGS_FILED.md) | Issues found in upstream LEZ/SPEL while building this |
 | [`docs/VERSIONS.md`](docs/VERSIONS.md) | Every pinned version, and how each pin was established by measurement |
