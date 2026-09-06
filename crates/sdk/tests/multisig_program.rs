@@ -642,6 +642,14 @@ fn execute_accounts(
             false,
         ),
         funded(recipient_id, 0),
+        // The submitter. Signed, but not an authority: the program never reads it, and every
+        // account execute touches is pinned by the config, the seed or the approved action.
+        account(
+            ProgramId::default(),
+            vec![],
+            AccountId::new([0x77; 32]),
+            true,
+        ),
     ]
 }
 
@@ -881,4 +889,39 @@ fn execute_refuses_a_proposal_account_at_the_wrong_address() {
         err.contains("[1009]") || err.contains("PdaMismatch"),
         "expected SPEL's PdaMismatch (1009), got: {err}"
     );
+}
+
+/// **`execute` is rejected by LEZ, and no test caught it.**
+///
+/// `execute_pays_the_proposals_recipient` passes: the program computes the right post-states. But
+/// the chain has the final say, and on the public testnet the transaction was submitted and never
+/// confirmed — twice, with a funded treasury and a proposal at full threshold. The guest was right
+/// and the *output* was inadmissible.
+///
+/// `program_output_passes_lez_own_execution_validation` covers `create_multisig` and `approve` and
+/// stops there, which is why this went unseen. Running the same validator over `execute` reproduces
+/// the chain's verdict in milliseconds instead of a twenty-minute submission.
+#[test]
+fn execute_output_passes_lez_own_execution_validation() {
+    use lee_core::program::validate_execution;
+
+    let (pid, config_hash, proposal_seed, cfg, prop) = executable_proposal();
+    let out = run(
+        execute_accounts(
+            pid,
+            config_hash,
+            proposal_seed,
+            &cfg,
+            &prop,
+            AccountId::new(RECIPIENT),
+        ),
+        &Instruction::Execute {
+            config_hash,
+            proposal_seed,
+        },
+    )
+    .expect("execute must produce output");
+
+    validate_execution(&out.pre_states, &out.post_states, out.self_program_id)
+        .expect("LEZ must accept the output of execute");
 }

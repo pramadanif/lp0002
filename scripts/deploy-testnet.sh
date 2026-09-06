@@ -209,7 +209,7 @@ log "create_proposal (treasury transfer)"
 RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 TX_PROPOSE=$(run_ix propose -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
-  --recipient "$RECIPIENT" \
+  --recipient "$RECIPIENT" --submitter "$CREATOR" \
   --amount "$TRANSFER_AMOUNT" --proposer "$CREATOR")
 info "tx $TX_PROPOSE"
 
@@ -257,7 +257,7 @@ done
 log "execute (threshold reached at FULL M)"
 TX_EXECUTE=$(run_ix execute -- execute \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
-  --recipient "$RECIPIENT")
+  --recipient "$RECIPIENT" --submitter "$CREATOR")
 info "tx $TX_EXECUTE"
 
 # ─── evidence ───────────────────────────────────────────────────────────────────────────────────

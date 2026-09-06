@@ -362,7 +362,7 @@ log "submitting a treasury-transfer proposal"
 RECIPIENT=c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3
 spel_run -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
-  --recipient "$RECIPIENT" \
+  --recipient "$RECIPIENT" --submitter "$CREATOR" \
   --amount "$TRANSFER_AMOUNT" --proposer "$CREATOR" \
   > "$RUN_DIR/propose.log" 2>&1 || { tail -20 "$RUN_DIR/propose.log" >&2; die "create_proposal failed"; }
 grep -q 'confirmed' "$RUN_DIR/propose.log" || die "create_proposal was not confirmed"
@@ -419,7 +419,7 @@ done
 log "executing the proposal (threshold reached with FULL M)"
 spel_run -- execute \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" \
-  --recipient "$RECIPIENT" \
+  --recipient "$RECIPIENT" --submitter "$CREATOR" \
   > "$RUN_DIR/execute.log" 2>&1 || { tail -20 "$RUN_DIR/execute.log" >&2; die "execute failed"; }
 grep -q 'confirmed' "$RUN_DIR/execute.log" || die "execute was not confirmed"
 info "executed and confirmed"

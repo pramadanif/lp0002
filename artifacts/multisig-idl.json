@@ -273,6 +273,12 @@
           "writable": true,
           "signer": false,
           "init": false
+        },
+        {
+          "name": "submitter",
+          "writable": false,
+          "signer": true,
+          "init": false
         }
       ],
       "args": [

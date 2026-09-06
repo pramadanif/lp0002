@@ -185,11 +185,25 @@ mod private_multisig {
     /// * `recipient` must be the account the proposal named. An earlier revision destructured the
     ///   action as `{ amount, .. }`, discarding the approved recipient, so the submitter could
     ///   redirect an approved payment to themselves and the approvals would still verify.
+    ///
+    /// # The `submitter` account
+    ///
+    /// Whoever sends the transaction. It is **not an authority**: this program never reads it, and
+    /// every account `execute` touches is pinned by `config_hash`, `proposal_seed` or the approved
+    /// action, so the submitter cannot change what executing does. Permissionless execution is the
+    /// point (**P-F4**) — requiring a member here would link a member to the proposal.
+    ///
+    /// It exists because a *public* LEZ transaction needs something to authorise it. `approve` gets
+    /// away without a signer only because it is privacy-preserving: the proof stands in for the
+    /// signature. `execute` is an ordinary public transaction, and with no signed account it
+    /// carried an empty witness set — submitted and never confirmed, on the public testnet and in
+    /// CI both. That is why `execute` had never succeeded anywhere.
     #[instruction]
     pub fn execute(
         #[account(mut, pda = arg("config_hash"))] config: AccountWithMetadata,
         #[account(mut, pda = arg("proposal_seed"))] proposal: AccountWithMetadata,
         #[account(mut)] recipient: AccountWithMetadata,
+        #[account(signer)] submitter: AccountWithMetadata,
         config_hash: [u8; 32],
         proposal_seed: [u8; 32],
     ) -> SpelResult {
@@ -220,7 +234,10 @@ mod private_multisig {
             .ok_or_else(|| err(pmsig_multisig_core::MultisigError::InvalidProposalAction))?;
 
         let proposal = with_data(&proposal, &proposal_state)?;
-        Ok(SpelOutput::execute(vec![config, proposal, recipient], vec![]))
+        Ok(SpelOutput::execute(
+            vec![config, proposal, recipient, submitter],
+            vec![],
+        ))
     }
 
     fn decode_config(account: &AccountWithMetadata) -> Result<MultisigConfig, SpelError> {
