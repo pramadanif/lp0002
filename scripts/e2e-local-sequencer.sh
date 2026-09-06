@@ -394,15 +394,25 @@ info "funded with $TREASURY_AMOUNT — $(printf '%s\n' "$fund_out" | awk '/inclu
 log "submitting a treasury-transfer proposal"
 # One variable for both steps. `execute` refuses a recipient the proposal did not name (INV-7), so
 # these must agree; they used to be written out separately and disagreed.
-# LEZ refuses to let a program modify an account that has never been used —
-# DefaultAccountModifiedWithoutClaim — unless the program claims ownership of it. Claiming is the
-# wrong answer here: a multisig must not take ownership of the account it is paying. So the demo
-# pays an account that already exists.
+# The payee is a second public account, created and initialised for the purpose. Three LEZ rules
+# between them leave no other option, and each was learned by having a transaction rejected:
 #
-# It used to pay 0xc3c3…c3, an address nobody controls and that had therefore never been used. That
-# is why `execute` was rejected — on the public testnet, in CI, and locally — even with a funded
-# treasury, a proposal at full threshold and a signed submitter. The chain would not let the program
-# credit an account that did not yet exist.
+#   * a never-used account cannot be credited at all — `DefaultAccountModifiedWithoutClaim` — and
+#     claiming it is wrong, since a multisig must not take ownership of the account it pays;
+#   * an account whose owner is default but whose state is not is refused by `validate_execution`
+#     rule 7, so the payee has to be registered with a program;
+#   * the payee cannot simply be the submitter: LEZ requires unique account ids in a message, and
+#     reusing $CREATOR produced "Duplicate account_ids found in message".
+#
+# So: a distinct account, already existing, owned by auth-transfer.
+log "creating the payee account"
+"$WALLET" account new public > "$RUN_DIR/payee.log" 2>&1 || die "could not create the payee account"
+PAYEE=$("$WALLET" account list 2>/dev/null | awk '/Public\//{print $2}' | grep -v "^${CREATOR}$" | head -1)
+[[ -n "$PAYEE" ]] || die "no second public account after creating one — see $RUN_DIR/payee.log"
+with_timeout 120 "$WALLET" auth-transfer init --account-id "$PAYEE" > "$RUN_DIR/payee-init.log" 2>&1 || true
+grep -q 'included in block' "$RUN_DIR/payee-init.log" \
+  || { tail -5 "$RUN_DIR/payee-init.log" >&2; die "could not initialise the payee account"; }
+
 RECIPIENT=$(python3 -c "
 import sys
 A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -411,9 +421,9 @@ n = 0
 for ch in s:
     n = n * 58 + A.index(ch)
 print(f'{n:064x}')
-" "$CREATOR")
-[[ ${#RECIPIENT} -eq 64 ]] || die "could not derive a 32-byte recipient id from $CREATOR (got '$RECIPIENT')"
-info "recipient: $CREATOR ($RECIPIENT)"
+" "$PAYEE")
+[[ ${#RECIPIENT} -eq 64 ]] || die "could not derive a 32-byte recipient id from $PAYEE (got '$RECIPIENT')"
+info "payee: $PAYEE ($RECIPIENT)"
 spel_run -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
   --recipient "$RECIPIENT" \

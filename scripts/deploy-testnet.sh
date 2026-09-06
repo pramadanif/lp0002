@@ -206,15 +206,19 @@ info "funded with $TREASURY_AMOUNT — $(printf '%s\n' "$fund_out" | awk '/inclu
 
 log "create_proposal (treasury transfer)"
 # One variable for both steps: `execute` refuses a recipient the proposal did not name (INV-7).
-# LEZ refuses to let a program modify an account that has never been used —
-# DefaultAccountModifiedWithoutClaim — unless the program claims ownership of it. Claiming is the
-# wrong answer here: a multisig must not take ownership of the account it is paying. So the demo
-# pays an account that already exists.
-#
-# It used to pay 0xc3c3…c3, an address nobody controls and that had therefore never been used. That
-# is why `execute` was rejected — on the public testnet, in CI, and locally — even with a funded
-# treasury, a proposal at full threshold and a signed submitter. The chain would not let the program
-# credit an account that did not yet exist.
+# The payee is a second public account, created and initialised for the purpose. See the same block
+# in scripts/e2e-local-sequencer.sh for the three LEZ rules that leave no other option: a never-used
+# account cannot be credited, an account with a default owner and non-default state is refused by
+# validate_execution rule 7, and the payee cannot be the submitter because account ids in a message
+# must be unique.
+log "creating the payee account"
+"$WALLET" account new public > "$OUT/payee.log" 2>&1 || die "could not create the payee account"
+PAYEE=$("$WALLET" account list 2>/dev/null | awk '/Public\//{print $2}' | grep -v "^${CREATOR}$" | head -1)
+[[ -n "$PAYEE" ]] || die "no second public account after creating one — see $OUT/payee.log"
+"$WALLET" auth-transfer init --account-id "$PAYEE" > "$OUT/payee-init.log" 2>&1 || true
+grep -q 'included in block' "$OUT/payee-init.log" \
+  || { tail -5 "$OUT/payee-init.log" >&2; die "could not initialise the payee account"; }
+
 RECIPIENT=$(python3 -c "
 import sys
 A='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -223,9 +227,9 @@ n = 0
 for ch in s:
     n = n * 58 + A.index(ch)
 print(f'{n:064x}')
-" "$CREATOR")
-[[ ${#RECIPIENT} -eq 64 ]] || die "could not derive a 32-byte recipient id from $CREATOR (got '$RECIPIENT')"
-info "recipient: $CREATOR ($RECIPIENT)"
+" "$PAYEE")
+[[ ${#RECIPIENT} -eq 64 ]] || die "could not derive a 32-byte recipient id from $PAYEE (got '$RECIPIENT')"
+info "payee: $PAYEE ($RECIPIENT)"
 TX_PROPOSE=$(run_ix propose -- create-proposal \
   --config-hash "$CONFIG_HASH" --proposal-seed "$PROPOSAL_SEED" --proposal-id "$PROPOSAL_ID" \
   --recipient "$RECIPIENT" \
