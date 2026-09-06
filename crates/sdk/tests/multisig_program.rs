@@ -943,3 +943,117 @@ fn execute_output_passes_lez_own_execution_validation() {
     validate_execution(&out.pre_states, &out.post_states, out.self_program_id)
         .expect("LEZ must accept the output of execute");
 }
+
+/// **The admission rules, checked in milliseconds instead of a fifty-minute demo run.**
+///
+/// `validate_execution` is not the only thing standing between a program's output and a block. LEZ
+/// admits a transaction through `ValidatedStateDiff::from_public_transaction`
+/// (`lee/state_machine/src/validated_state_diff/mod.rs`), which enforces a further eighteen rules —
+/// and that is the layer that rejected `execute` four times while
+/// `execute_output_passes_lez_own_execution_validation` passed throughout. Each rejection cost a
+/// full run to discover: two proofs, a sequencer build, roughly fifty minutes, to learn one rule.
+///
+/// That module cannot be called from here — it lives in the `lee` crate under `.refs/`, a local
+/// checkout that is not committed, so depending on it would break CI and any fresh clone. The rules
+/// this test can check without it are transcribed instead, from the source, with the reasoning kept
+/// next to each one.
+#[test]
+fn every_instruction_satisfies_lez_admission_rules() {
+    let pid = program_id();
+    let tree = member_tree();
+    let config_hash = pmsig_core::config_hash(&tree.root(), 1, 3, &MULTISIG_ID, &pid);
+    let proposal_seed = pmsig_core::proposal_seed(&config_hash, &PROPOSAL_ID);
+    let (epid, ech, eps, cfg, prop) = executable_proposal();
+
+    let outputs = [
+        (
+            "create_multisig",
+            run(
+                vec![
+                    account(
+                        ProgramId::default(),
+                        vec![],
+                        public_pda(&pid, &config_hash),
+                        false,
+                    ),
+                    account(
+                        ProgramId::default(),
+                        vec![],
+                        AccountId::new([0x77; 32]),
+                        true,
+                    ),
+                ],
+                &Instruction::CreateMultisig {
+                    config_hash,
+                    member_root: tree.root(),
+                    m: 1,
+                    n: 3,
+                    multisig_id: MULTISIG_ID,
+                    membership_program_id: pid,
+                },
+            ),
+        ),
+        (
+            "execute",
+            run(
+                execute_accounts(epid, ech, eps, &cfg, &prop, AccountId::new(RECIPIENT)),
+                &Instruction::Execute {
+                    config_hash: ech,
+                    proposal_seed: eps,
+                },
+            ),
+        ),
+    ];
+
+    for (name, out) in outputs {
+        let out = out.unwrap_or_else(|e| panic!("{name} must produce output: {e}"));
+
+        // "Public transaction must have at least one account."
+        assert!(
+            !out.pre_states.is_empty(),
+            "{name}: a public transaction needs at least one account"
+        );
+
+        // "Duplicate account_ids found in message." Reusing one account in two roles is the
+        // mistake that rejected `execute` once the payee was set to the submitter.
+        let mut seen = std::collections::HashSet::new();
+        for a in &out.pre_states {
+            assert!(
+                seen.insert(a.account_id),
+                "{name}: account {} appears twice; LEZ requires unique account ids",
+                a.account_id
+            );
+        }
+
+        // `DefaultAccountModifiedWithoutClaim`: an account whose *pre* state has the default owner
+        // may only be modified if the *post* state claims it — i.e. carries a non-default owner.
+        // This is what refused a transfer to an address nobody had ever used, and claiming a payee
+        // is not an option for a multisig, so the payee must already be owned by some program.
+        for (pre, post) in out.pre_states.iter().zip(out.post_states.iter()) {
+            if pre.account.program_owner != ProgramId::default() {
+                continue;
+            }
+            if pre.account == *post.account() {
+                continue;
+            }
+            // The rule is checked against the *applied* diff, after claims have been processed —
+            // so an output satisfies it either by already carrying a non-default owner or by
+            // requesting one. Checking only the owner failed `create_multisig`, which has worked on
+            // chain in every run: its config account is `init`, and SPEL expresses that as a claim.
+            assert!(
+                post.required_claim().is_some()
+                    || post.account().program_owner != ProgramId::default(),
+                "{name}: account {} starts with the default owner and is modified, so LEZ requires \
+                 the output to claim it — see DefaultAccountModifiedWithoutClaim",
+                pre.account_id
+            );
+        }
+
+        // "Every account the caller declared must appear in the final diff."
+        assert_eq!(
+            out.pre_states.len(),
+            out.post_states.len(),
+            "{name}: every declared account must appear in the output"
+        );
+    }
+}
