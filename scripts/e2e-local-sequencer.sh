@@ -112,6 +112,17 @@ export RISC0_DEV_MODE=0
 info "RISC0_DEV_MODE=${RISC0_DEV_MODE}"
 [[ "$RISC0_DEV_MODE" == "0" ]] || die "RISC0_DEV_MODE must be 0 on the e2e path, got '$RISC0_DEV_MODE'"
 
+# A run starts from a clean chain. The sequencer's data and the demo wallet both live under
+# $RUN_DIR, and keeping them meant a second run reused the same shielded accounts, hence the same
+# member_root, hence the same config_hash, hence the same PDA — and `#[account(init)]` correctly
+# refused to create a multisig that already existed. So this demo worked exactly once per machine
+# and failed every time after, which is the opposite of what a reviewer running it needs.
+#
+# Set PMSIG_KEEP_RUN=1 to keep the previous run's state for inspection.
+if [[ -d "$RUN_DIR" && "${PMSIG_KEEP_RUN:-0}" != "1" ]]; then
+  info "clearing the previous run ($RUN_DIR) — set PMSIG_KEEP_RUN=1 to keep it"
+  rm -rf "$RUN_DIR"
+fi
 mkdir -p "$RUN_DIR"
 
 # ─── 1. LEZ checkout at the pinned revision ──────────────────────────────────────────────────────
@@ -255,6 +266,47 @@ info "multisig created and confirmed"
 # the multisig's own treasury (INV-7). Both are defined here, before the funding step uses them.
 TRANSFER_AMOUNT=100
 TREASURY_AMOUNT=100
+
+# ─── Fund the creator from the local Piñata faucet ───────────────────────────────────────────────
+#
+# The wallet on a fresh local sequencer has nothing, and the treasury transfer below fails with
+# "Can not pay for operation". Nothing needed funds before: every earlier step submits a
+# transaction, none of them *moves* value.
+#
+# Piñata is one of LEZ's built-in programs, so it exists on a standalone node exactly as it does on
+# the public testnet. (scripts/fund-testnet.sh refuses localhost on the assumption that a faucet is
+# a testnet thing — that assumption is wrong, and this is why.)
+log "funding the demo wallet from the local Piñata faucet"
+creator_id=${CREATOR#Public/}
+lez_balance() {
+  curl -s -X POST "$SEQ_URL" -H 'content-type: application/json' \
+    --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccountBalance\",\"params\":[\"$creator_id\"]}" \
+    --max-time 20 | jq -r '.result // 0'
+}
+
+# The faucet will not pay an uninitialised account, and `auth-transfer init` hangs on an already
+# initialised one rather than erroring — so the nonce decides. A nonce above zero means used, hence
+# initialised. (Learned the hard way; see docs/tried-failed.md.)
+nonce=$(curl -s -X POST "$SEQ_URL" -H 'content-type: application/json' \
+  --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"getAccount\",\"params\":[\"$creator_id\"]}" \
+  --max-time 20 | jq -r '.result.nonce // 0')
+if [[ "$nonce" == "0" ]]; then
+  "$WALLET" auth-transfer init --account-id "$CREATOR" > "$RUN_DIR/init.log" 2>&1 || true
+  grep -q 'included in block' "$RUN_DIR/init.log" \
+    || { tail -5 "$RUN_DIR/init.log" >&2; die "could not initialise the demo account"; }
+fi
+
+# Each claim is a fixed amount, so claim until the treasury transfer is affordable.
+claims=0
+while [[ "$(lez_balance)" -lt "$TREASURY_AMOUNT" ]]; do
+  claims=$((claims + 1))
+  [[ "$claims" -le 8 ]] || die "claimed from the faucet $((claims - 1)) times and the balance is still \
+       $(lez_balance), below the $TREASURY_AMOUNT this demo moves. See $RUN_DIR/claim.log"
+  "$WALLET" pinata claim --to "$CREATOR" > "$RUN_DIR/claim.log" 2>&1 || true
+  grep -q 'included in block' "$RUN_DIR/claim.log" \
+    || { tail -5 "$RUN_DIR/claim.log" >&2; die "the faucet claim was not included in a block"; }
+done
+info "wallet balance: $(lez_balance) after $claims claim(s)"
 
 # ─── Fund the multisig's own treasury ────────────────────────────────────────────────────────────
 #
