@@ -192,6 +192,16 @@ else
   bad "PF-11" "a committed guest binary is stale — run ./scripts/check-guests-fresh.sh"
 fi
 
+# Fresh is not the same as reproducible. Every commit but one has shipped a local-toolchain build
+# whose own IMAGE_IDS.md says "do not deploy or quote in a submission" — and this gate passed it,
+# because it only asked whether the file existed. A ProgramId on LEZ *is* the ImageID, so a local
+# build is not a slower path to the same artifact: it is a different program.
+if grep -q 'NOT reproducible' artifacts/IMAGE_IDS.md 2>/dev/null; then
+  bad "PF-11" "artifacts/ holds a LOCAL build — run ./scripts/build-guests.sh --docker"
+else
+  ok "PF-11" "committed guest binaries come from a reproducible build"
+fi
+
 # PF-06b — every relative Markdown link resolves at the pin. #125 was pulled up for a
 # `limitations.md` link that 404'd at its own pinned commit; a reviewer reads this repo at a commit,
 # not on a live branch.
