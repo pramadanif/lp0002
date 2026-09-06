@@ -36,10 +36,16 @@ die() { echo "FATAL: $*" >&2; exit 1; }
 
 # Free memory in GB, or empty when it cannot be determined.
 #
-# Not decoration. A composed approval peaks near 9 GB (docs/cu-costs.md); below that the prover does
-# not fail, it swaps — and the first attempt at this ran for hours before anyone worked out that
-# Chrome and two editors were holding the memory. Hours of thrashing look exactly like slow proving,
-# which is the worst failure mode there is: it wastes the time and teaches you nothing.
+# Not decoration. A composed approval peaks near 8.7 GB (docs/cu-costs.md); far below that the
+# prover does not fail, it swaps — and the first attempt at this ran for hours before anyone worked
+# out that Chrome and two editors were holding the memory. Hours of thrashing look exactly like slow
+# proving, which is the worst failure mode there is: it wastes the time and teaches you nothing.
+#
+# The threshold is 7, not 9, because 9 was a guess and 7.4 GB free is *measured* to be enough: a run
+# starting there completed both approvals, with swap absorbing roughly a gigabyte and the r0vm
+# resident set oscillating between 1.5 and 9.2 GB as recursion lifts and joins each segment. A
+# threshold that refuses a configuration known to work is not caution, it is a false alarm — and
+# this one refused a run twice.
 free_gb() {
   if [[ "$(uname)" == "Darwin" ]]; then
     vm_stat 2>/dev/null | awk '
@@ -57,7 +63,7 @@ free_gb() {
 # PMSIG_MIN_FREE_GB=0 if you know better than this check — it is a resource precondition, not a
 # correctness one, and nothing about the proof changes if you clear it.
 require_free_ram() {
-  local need="${PMSIG_MIN_FREE_GB:-9}" have
+  local need="${PMSIG_MIN_FREE_GB:-7}" have
   have=$(free_gb)
   if [[ -z "$have" ]]; then
     info "could not measure free memory on this platform; skipping the check"
