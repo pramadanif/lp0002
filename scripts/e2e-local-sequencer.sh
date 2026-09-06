@@ -161,6 +161,27 @@ mkdir -p "$SEQ_HOME"
 # fails with "Is a directory (os error 21)".
 SEQ_CONFIG="$LEZ_DIR/lez/sequencer/service/configs/debug/sequencer_config.json"
 [[ -f "$SEQ_CONFIG" ]] || die "sequencer config not found at $SEQ_CONFIG"
+
+# Free the port before starting, and verify it. A sequencer left behind by an earlier run answers
+# the readiness check below on the *old* chain, so ours can fail to start — "Address already in use"
+# — while the run carries on talking to a stale node. That is how a create_multisig came back as
+# "Transaction NOT confirmed": the account already existed, on a chain this run thought it had wiped.
+SEQ_PORT=${SEQ_URL##*:}
+if command -v lsof >/dev/null 2>&1; then
+  holders=$(lsof -ti :"$SEQ_PORT" 2>/dev/null || true)
+  if [[ -n "$holders" ]]; then
+    info "port $SEQ_PORT is held by pid(s) $holders — stopping them first"
+    # shellcheck disable=SC2086
+    kill $holders 2>/dev/null || true
+    for _ in $(seq 1 20); do
+      lsof -ti :"$SEQ_PORT" >/dev/null 2>&1 || break
+      sleep 1
+    done
+    lsof -ti :"$SEQ_PORT" >/dev/null 2>&1 \
+      && die "port $SEQ_PORT is still held after 20s by pid(s) $(lsof -ti :"$SEQ_PORT" | tr '\n' ' ')"
+  fi
+fi
+
 ( cd "$SEQ_HOME" && RUST_LOG=info "$SEQ_BIN" "$SEQ_CONFIG" > "$SEQ_LOG" 2>&1 ) &
 SEQ_PID=$!
 info "sequencer pid $SEQ_PID, logs -> $SEQ_LOG"
@@ -179,6 +200,16 @@ for _ in $(seq 1 60); do
   sleep 1
 done
 (( ready == 1 )) || die "the sequencer did not answer on $SEQ_URL within 60s"
+
+# Something answered — make sure it was ours. A startup failure that leaves an older node serving
+# would otherwise pass this check silently, and every later step would run against the wrong chain.
+kill -0 "$SEQ_PID" 2>/dev/null \
+  || die "something is answering on $SEQ_URL but our sequencer is not running — see $SEQ_LOG"
+if grep -qiE 'address already in use|failed to create HTTP listener' "$SEQ_LOG" 2>/dev/null; then
+  tail -10 "$SEQ_LOG" >&2
+  die "our sequencer could not bind its ports, so the node answering $SEQ_URL is someone else's.
+       Stop it and re-run; see $SEQ_LOG"
+fi
 
 BLOCK=$(curl -s -X POST "$SEQ_URL" -H 'content-type: application/json' \
   --data '{"jsonrpc":"2.0","id":1,"method":"getLastBlockId","params":[]}' | jq -r '.result')
