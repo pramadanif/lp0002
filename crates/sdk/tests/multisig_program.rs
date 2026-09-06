@@ -1039,6 +1039,27 @@ fn every_instruction_satisfies_lez_admission_rules() {
             );
         }
 
+        // Authorization is checked in *both* directions: an account the program marks authorized
+        // must really be authorized (`InvalidAccountAuthorization`), and one that really is
+        // authorized must be marked (`AuthorizedAccountMarkedAsNotAuthorized`).
+        //
+        // For a top-level public call the authorized set is exactly the signers: LEZ's own test
+        // `compute_public_authorized_pdas_no_caller_returns_empty` pins that a call with no caller
+        // authorizes no PDAs at all. So the config and proposal PDAs must NOT be marked, and the
+        // signer must be.
+        let marked: Vec<_> = out
+            .pre_states
+            .iter()
+            .filter(|a| a.is_authorized)
+            .map(|a| a.account_id)
+            .collect();
+        assert!(
+            marked.len() <= 1,
+            "{name}: {} accounts marked authorized; a top-level public call authorizes only its \
+             signer — PDAs are never in that set",
+            marked.len()
+        );
+
         // "Every account the caller declared must appear in the final diff."
         assert_eq!(
             out.pre_states.len(),
