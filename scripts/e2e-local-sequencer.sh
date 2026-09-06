@@ -98,6 +98,14 @@ require() {
 
 cleanup() {
   local code=$?
+  # An abort must never look like a pass. `code` alone did not hold: a `set -u` failure on an
+  # unbound variable produced exit 0 here, and demo.sh is the prize's evidence — a false green in it
+  # is worse than any bug it could hide. So success additionally requires the script to have reached
+  # its own end and said so.
+  if (( code == 0 )) && [[ "${E2E_COMPLETED:-0}" != "1" ]]; then
+    printf '\n\033[1;31me2e ABORTED before completing, but exited 0 — treating as failure\033[0m\n' >&2
+    code=70
+  fi
   if [[ -n "$SEQ_PID" ]] && kill -0 "$SEQ_PID" 2>/dev/null; then
     if [[ "${PMSIG_KEEP_RUNNING:-0}" == "1" ]]; then
       info "leaving the sequencer running (pid $SEQ_PID); logs at $SEQ_LOG"
@@ -281,6 +289,11 @@ CREATOR=$(printf '%s\n' "$wallet_accounts" | awk '/Public\//{print $2; exit}')
 info "creator: $CREATOR"
 
 # ─── 7. Deploy both programs ─────────────────────────────────────────────────────────────────────
+# The demo moves a modest amount: a faucet claim is 150, and the proposal must be payable out of
+# the multisig's own treasury (INV-7). Defined here, before the faucet loop reads TREASURY_AMOUNT.
+TRANSFER_AMOUNT=100
+TREASURY_AMOUNT=100
+
 # ─── Fund the creator from the local Piñata faucet ───────────────────────────────────────────────
 #
 # The wallet on a fresh local sequencer has nothing, and the treasury transfer below fails with
@@ -360,11 +373,6 @@ spel_run -- create-multisig \
   > "$RUN_DIR/create.log" 2>&1 || { tail -20 "$RUN_DIR/create.log" >&2; die "create_multisig failed"; }
 grep -q 'confirmed' "$RUN_DIR/create.log" || die "create_multisig was not confirmed"
 info "multisig created and confirmed"
-
-# The demo moves a modest amount: a faucet claim is 150, and the proposal must be payable out of
-# the multisig's own treasury (INV-7). Both are defined here, before the funding step uses them.
-TRANSFER_AMOUNT=100
-TREASURY_AMOUNT=100
 
 # ─── Fund the multisig's own treasury ────────────────────────────────────────────────────────────
 #
@@ -457,6 +465,7 @@ cargo run --quiet -p pmsig-sdk --example verify_onchain -- \
   "$SEQ_URL" "$REPO/artifacts/IMAGE_IDS.md" "$CONFIG_HASH" "$PROPOSAL_SEED" \
   || die "on-chain verification failed"
 
+E2E_COMPLETED=1
 log "DEMO COMPLETE"
 cat <<EOF
 
