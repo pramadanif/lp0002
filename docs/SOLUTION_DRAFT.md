@@ -108,7 +108,7 @@ as evidence anywhere.
 
 | | |
 |---|---|
-| Membership proof (standalone) | 53.26 s, 598,666 cycles |
+| Membership proof (standalone) | 115.97 s, 602,662 cycles |
 | Composed approval (what a member actually pays) | ≈19 min 26 s, peak 8.74 GB |
 | Free RAM required | ≈9 GB |
 | Host | 8-core laptop, 16 GB, no GPU prover |

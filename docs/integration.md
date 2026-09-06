@@ -34,7 +34,7 @@ cargo run -p pmsig-sdk --example integrate
 
    **Submission is not the SDK's job, and the receipt is not the thing you submit.**
    `prove::prove_approval` proves the *membership guest on its own* — useful to check a witness
-   locally, and what the ~53 s figure below measures. What the chain accepts is a
+   locally, and what the ~116 s figure below measures. What the chain accepts is a
    privacy-preserving transaction in which LEZ's own circuit runs `env::verify` over the chained
    call; that is built and proved by the wallet or CLI you submit through, and costs ~19 min
    (see [cu-costs.md](cu-costs.md)). `pmsig-sdk` has no sequencer client at all. In this repository
@@ -89,7 +89,7 @@ Three worth handling explicitly:
 - **2003 `DevModeRefused`** — `RISC0_DEV_MODE=1` produces a receipt that proves nothing. The SDK
   refuses rather than appearing to succeed.
 - **2006 `AlreadyApproved`** — detected locally from the on-chain nullifier set, before spending
-  ~53 s on a proof.
+  ~116 s on a proof.
 
 ## The CLI
 

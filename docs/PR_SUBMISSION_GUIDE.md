@@ -104,8 +104,9 @@ The repository is deliberately explicit about what is *not* done. Keep it that w
 every claim below is one a reviewer can check in minutes, and the value of the honest ones is lost
 if one dishonest one is found next to them.
 
-- **Proving time is two numbers, not one.** ~53 s is the standalone membership proof. **~19 min** is
-  the composed approval, which is what a member actually pays. Quoting only 53 s is misleading.
+- **Proving time is two numbers, not one.** ~116 s is the standalone membership proof. **~19 min**
+  is the composed approval, which is what a member actually pays. Quoting only the standalone figure
+  is misleading.
 - **The SDK cannot submit anything.** It prepares and proves; submission is the SPEL CLI's job. The
   receipt from `prove_approval` is not what the chain accepts.
 - **`demo-fast.sh` is not the demo.** It runs no prover and proves nothing, and says so in its own

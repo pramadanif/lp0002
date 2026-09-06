@@ -88,27 +88,27 @@ who wants to approve several proposals at once.
 
 ## 10a. The composed approval proof is expensive, and needs free RAM
 
-The **standalone** membership proof takes 53.26 s. The **composed** approval — LEZ's
+The **standalone** membership proof takes 115.97 s. The **composed** approval — LEZ's
 privacy-preserving circuit running `env::verify` over two chained programs — takes **≈19 minutes**
 and peaks at **8.74 GB** on an 8-core laptop with no GPU prover. It completes; it is simply a
 different order of cost, because composition needs *succinct* receipts, i.e. a lift+join for every
 segment of every inner program.
 
-**The practical requirement is roughly 9 GB of free RAM**, and that is the part likely to bite an
+**The practical requirement is roughly 7 GB of free RAM**, and that is the part likely to bite an
 evaluator. Our first attempt failed for exactly this reason and it was **not** a hardware limit:
 Chrome (5.8 GB), Cursor (1.7 GB) and VS Code (1.4 GB) were already holding ~9 GB of the 16 GB, so
 the prover was forced into swap and thrashed for hours without finishing. With Chrome and Cursor
 closed, the same proof completed in 19 minutes and swap never moved.
 
 So for **P-F5** ("proof generation runs client-side on a standard laptop"): it holds, on a 16 GB
-laptop, *provided ~9 GB is actually free*. A machine that is otherwise loaded will appear to hang.
+laptop, *provided ~7 GB is actually free*. A machine that is otherwise loaded will appear to hang.
 The README states this up front so nobody concludes the demo is broken.
 
 Evidence: `artifacts/phase-E-ppe-approve-SUCCESS.txt`.
 
 ## 10. Measurement caveats
 
-- **Proving time (53.26 s)** is a single sample, on one 8-core laptop with no GPU. It is not a
+- **Proving time (115.97 s)** is a single sample, on one 8-core laptop with no GPU. It is not a
   distribution and not a benchmark suite.
 - **A second proof in the same process** did not complete within 25 minutes on two occasions, while
   the first took 53 s. Undiagnosed. It does not affect the recorded figure, which is the first proof
@@ -117,7 +117,7 @@ Evidence: `artifacts/phase-E-ppe-approve-SUCCESS.txt`.
 
 ## 10a-bis. The memory requirement is now checked, not just stated
 
-Both scripts that generate a composed approval refuse to start one when less than ~9 GB is free
+Both scripts that generate a composed approval refuse to start one when less than ~7 GB is free
 (`PMSIG_MIN_FREE_GB` overrides; `0` disables). They used to print "expect ~9 GB of free RAM" and
 proceed regardless, which is how the first attempt at this ran for hours: below that threshold the
 prover does not fail, it swaps, and hours of thrashing are indistinguishable from slow proving.

@@ -19,34 +19,51 @@ Guest: `programs/membership-lez` — membership + nullifier verification with li
 
 | Measurement | Value |
 |-------------|-------|
-| Guest cycles | **598,666** (measured against the deployed binary — `artifacts/cu-measured.md`) |
-| Proving time | **53.26 s** |
+| Guest cycles | **602,662** (measured against the deployed binary — `artifacts/cu-measured.md`) |
+| Proving time | **115.97 s** |
 | `RISC0_DEV_MODE` | **0** (asserted inside the test, not merely set) |
-| Journal size | **776 bytes** |
+| Journal size | **5,928 bytes** (inner journal — prover-local, never published; see below) |
 | Receipt kind | Composite (`ProverOpts::default()`) |
 | Prover | external `r0vm` 3.0.6 |
 | Host | Darwin arm64, 8 cores, no GPU acceleration |
-| Guest binary | `artifacts/membership.bin`, 377,084 bytes |
-| Reproduce | `./scripts/build-guests.sh && ./scripts/prove-bench.sh` |
+| Guest binary | `artifacts/membership.bin`, 393,868 bytes, reproducible (container r0.1.91.1) |
+| Reproduce | `./scripts/build-guests.sh --docker && ./scripts/prove-bench.sh` |
 | Log | `logs/phase-B-prove-bench.log` |
 
-**Does this satisfy "runs client-side on a standard laptop"?** Yes: 53 s on an 8-core laptop with no
-GPU, well inside what a member waits for a governance action. The measurement is a single sample on
-one machine, not a distribution — stated plainly rather than dressed up as a benchmark suite.
+Re-measured 2026-09-07 against the reproducible binary. The earlier figures in this row — 53.26 s
+and a 776-byte journal — were real, but they were measured on a design that **was abandoned**, and
+are corrected below rather than quietly dropped.
 
-### What the witness split bought
+**Does this satisfy "runs client-side on a standard laptop"?** Yes: 116 s on an 8-core laptop with
+no GPU. That is a wait, not an inconvenience, for an action a member takes deliberately. The
+measurement is a single sample on one machine, not a distribution — stated plainly rather than
+dressed up as a benchmark suite.
 
-Moving the member's secrets out of `instruction_data` and into a private input (see
-`docs/tried-failed.md`) was done for privacy, but it also made proving substantially cheaper, because
-the witness is no longer serialised into the committed journal:
+### The witness split, and why the cheaper design is not the one we ship
 
-| | Witness in `instruction_data` | Witness as a private input |
+An earlier design moved the member's secrets out of `instruction_data` into a private input. It was
+faster and produced a much smaller journal:
+
+| | Witness in `instruction_data` (**shipped**) | Witness as a private input (**abandoned**) |
 |---|---|---|
-| Proving time | 123.86 s | **53.26 s** |
-| Journal size | 5,928 bytes | **776 bytes** |
-| Member's `nsk` recoverable from journal | **yes** | **no** |
+| Proving time | **115.97 s** | 53.26 s |
+| Journal size | **5,928 bytes** | 776 bytes |
+| Member's `nsk` recoverable from that journal | **yes** | no |
 
-Both rows were measured on the same machine with the same settings.
+**It does not work on LEZ.** LEZ writes a program exactly four inputs and offers no private channel
+(`lee/state_machine/src/program/mod.rs::write_inputs`), so a guest reading a fifth input fails with
+`DeserializeUnexpectedEnd` the moment a real transaction reaches it. It passed every host-side test
+first. See `docs/tried-failed.md`.
+
+So the shipped design costs roughly twice the proving time and an eight-times larger journal, and
+the member's `nsk` **is** in that journal. That is not a leak: the journal in question is the
+**inner** membership receipt, which is consumed by `env::verify` inside LEZ's privacy-preserving
+circuit and never reaches the chain. It is prover-local secret material, and
+`the_inner_journal_contains_the_witness_and_must_be_treated_as_secret` asserts exactly that, so the
+property cannot drift silently. The chain-facing privacy claim is a separate assertion against
+`PrivacyPreservingCircuitOutput` — see `docs/security.md` §3b.
+
+Both columns were measured on the same machine with the same settings.
 
 ### The composed proof — measured
 
@@ -81,14 +98,23 @@ re-tested. Recorded rather than smoothed over.
 
 ## 2. On-chain compute units (P-P1)
 
-**Partially measured.** The instruction that actually costs anything — `approve`, the only
-privacy-preserving one — is measured against the **deployed binary**:
+**Measured, all four instructions**, by running the **reproducible binaries the chain is given** in
+the risc0 executor:
 
 | Instruction | Program | Cycles |
 |-------------|---------|--------|
-| `verify_approval` (chained from `approve`) | `membership` | **598,666** |
+| `create_multisig` | `multisig` | **155,809** |
+| `create_proposal` | `multisig` | **257,625** |
+| `execute` | `multisig` | **315,293** |
+| `verify_approval` (chained from `approve`) | `membership` | **602,662** |
 
 Regenerate with `./scripts/measure-cu.sh`; the raw output is `artifacts/cu-measured.md`.
+
+Each figure is taken from a run that **succeeded**: the measurement decodes the guest's journal into
+a `ProgramOutput`, which only a successful execution commits. Without that, a run ending in a
+program error would burn cycles and be published here as the cost of the happy path — checked by
+pointing `execute` at a payee the proposal never named, which fails with `7012
+InvalidProposalAction` rather than reporting a number.
 
 ### Why cycles
 
@@ -98,15 +124,16 @@ quantity that *is* compute is the cycle count: it sets proving time, segment cou
 the chain imposes. The prize's own note that "LEZ's per-transaction compute budget may change during
 testnet" is consistent with that.
 
-### Still outstanding
+### What these figures are, and are not
 
-`create_multisig`, `create_proposal` and `execute` are **public** transactions executed directly by
-the sequencer, and their per-instruction figures are **not yet measured on a public testnet**.
+`create_multisig`, `create_proposal` and `execute` are **public** transactions: no proof is
+generated for them, but the sequencer still runs them in the zkVM, so they still cost cycles. That
+is what the table reports.
 
-**Still to do — Phase G.** No longer blocked on funding: `./scripts/fund-testnet.sh` obtains
-testnet funds unattended via the Piñata faucet. Will carry one numeric CU figure per instruction
-(`create_multisig`, `create_proposal`, `approve`, `execute`), measured against the live LEZ testnet
-with the deployed program.
+These are cycles of the deployed binary measured **host-side in the executor**, not a reading from a
+testnet meter — LEZ exposes no per-instruction compute counter to read one from. The executor runs
+the same ELF the sequencer runs, so the cycle counts are the same quantity; what a host measurement
+cannot capture is sequencer-side overhead outside the guest.
 
 Criterion P-P1 requires actual figures. Preflight check PF-08 looks for this per-instruction table
 specifically — not merely for digits somewhere in the file, which the proving benchmarks above would

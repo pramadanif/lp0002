@@ -9,7 +9,7 @@ Built for [λPrize LP-0002](docs/plan/LP-0002.md). Licensed **MIT OR Apache-2.0*
 Repository: <https://github.com/pramadanif/lp0002>
 
 > **Status: phases −1 through D complete; E and F in progress.** The membership guest proves and
-> verifies for real (`RISC0_DEV_MODE=0`, 53.26 s on a laptop); the on-chain SPEL program enforces the
+> verifies for real (`RISC0_DEV_MODE=0`, 115.97 s on a laptop); the on-chain SPEL program enforces the
 > full lifecycle with a published IDL; and the privacy-preserving composition **has** been
 > demonstrated — an anonymous approval proved and confirmed on a real standalone sequencer, ≈19 min
 > and 8.74 GB (`artifacts/phase-E-ppe-approve-SUCCESS.txt`).

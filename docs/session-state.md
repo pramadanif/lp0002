@@ -5,7 +5,9 @@ read from a command, not recalled.
 
 ```
 128 tests / 0 failed · fmt 0 · clippy 0 · shellcheck 0 · links 0
+preflight: pass=15 fail=0 pending=3  (first run with no failures)
 demo.sh: COMPLETE, exit 0, execute confirmed, treasury 0 / payee 100
+artifacts: reproducible (container r0.1.91.1)
 ```
 
 ## `demo.sh` completed, and `execute` moved the money
@@ -75,15 +77,22 @@ Fixed at the root: `build-guests.sh` writes to `$PMSIG_ARTIFACTS_DIR` (default `
 the demo points it at `.e2e/run/artifacts`. When the committed binaries are reproducible **and**
 current, the demo skips the build and runs the very binaries the submission ships.
 
-`566286f` is far behind the current sources, so a fresh `./scripts/build-guests.sh --docker` is
-required before anything is deployed or quoted.
+**Done 2026-09-07.** `./scripts/build-guests.sh --docker` rebuilt both guests reproducibly. The
+membership ImageID came back byte-identical to `566286f`'s `960db4f2…` — same sources, different
+day, rebuilt container — which demonstrates reproducibility rather than asserting it. The multisig
+id moved to `79cf1dba…`, correctly, since `execute` was rewritten.
+
+Because the committed artifacts are now reproducible and fresh, `demo.sh` skips the guest build
+entirely and runs the binaries the submission ships. That shortens a recording and removes the last
+way a demo run could quietly replace them.
 
 ## Still open, in priority order
 
-1. `./scripts/build-guests.sh --docker`, commit the artifacts — blocks 2, and shortens the video
-2. Redeploy to testnet on those ImageIDs → **P-F6, P-F7, P-S1, P-P1**. `execute` is proven locally
-   but has never run on the public testnet
-3. CI `e2e-sequencer` green → **P-S2**
+1. Redeploy to testnet on the new ImageIDs → **PF-09, PF-10, P-F6, P-F7, P-S1**. `execute` is proven
+   locally but has **never run on the public testnet**, which reports only `Transaction not found in
+   preconfigured amount of blocks` — the reason lives in a local sequencer's log. Needs a stable
+   network; on 2026-09-07 github.com would not resolve from this machine for a while
+2. CI `e2e-sequencer` green → **P-S2**. Never yet completed; tonight's fixes are untested there
 4. Basecamp `.lgx` → **P-U2**. The toolchain is installed now (cmake, ninja, Qt6, `lgx` 0.1.0), but
    the module still cannot link: **there is no FFI crate**, and the generated UI calls thirteen
    `extern "C"` functions nothing provides.
